@@ -1,0 +1,29 @@
+\contentsline {chapter}{\numberline {1}Introducere}{2}{}%
+\contentsline {section}{\numberline {1.1}Documentație}{2}{}%
+\contentsline {subsection}{\numberline {1.1.1}Clase de date}{2}{}%
+\contentsline {subsubsection}{Clasa BinaryData}{2}{}%
+\contentsline {subsubsection}{VariableByte}{2}{}%
+\contentsline {subsubsection}{CustomUTF8}{2}{}%
+\contentsline {subsection}{\numberline {1.1.2}Configurare}{3}{}%
+\contentsline {subsection}{\numberline {1.1.3}Clasa MQTTPacket}{3}{}%
+\contentsline {paragraph}{Implementare generală în Python}{3}{}%
+\contentsline {subsection}{\numberline {1.1.4}Subclasele MQTTPacket}{4}{}%
+\contentsline {subsubsection}{Clasa ConnectPacket}{4}{}%
+\contentsline {subsubsection}{Clasa ConnackPacket}{5}{}%
+\contentsline {subsubsection}{Clasa PublishPacket}{6}{}%
+\contentsline {subsubsection}{Clasa PubackPacket}{6}{}%
+\contentsline {subsubsection}{Clasa PubrecPacket}{7}{}%
+\contentsline {subsubsection}{Clasa PubrelPacket}{7}{}%
+\contentsline {subsubsection}{Clasa PubcompPacket}{8}{}%
+\contentsline {subsubsection}{Clasa SubscribePacket}{9}{}%
+\contentsline {subsubsection}{Clasa SubackPacket}{9}{}%
+\contentsline {subsubsection}{Clasa UnsubscribePacket}{10}{}%
+\contentsline {subsubsection}{Clasa UnsubackPacket}{10}{}%
+\contentsline {subsubsection}{Clasa PingreqPacket}{11}{}%
+\contentsline {subsubsection}{Clasa PingrespPacket}{11}{}%
+\contentsline {subsubsection}{Clasa AuthPacket}{11}{}%
+\contentsline {subsubsection}{Clasa MalformedPacket}{12}{}%
+\contentsline {subsection}{\numberline {1.1.5}Clasa Session}{12}{}%
+\contentsline {paragraph}{Structură generală în Python}{12}{}%
+\contentsline {subsection}{\numberline {1.1.6}Clasa Keeper}{12}{}%
+\contentsline {paragraph}{Structură generală în Python}{13}{}%
