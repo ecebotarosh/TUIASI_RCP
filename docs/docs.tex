@@ -363,6 +363,7 @@ Astfel, definițiile metodelor vor deveni următoarele :
 		'controlType' : int, 
 	)
 \end{verbatim}
+Metodele \emph{parseVariableHeader} și \emph{parsePayloadHeader} nu vor avea nevoie de suprascriere pentru că în specificație este menționat faptul că pachetele de tip PINGREQ nu au nici header variabil, nici payload.
 \subsubsection{Clasa PingrespPacket}
 Clasa PingrespPacket descrie un pachet MQTT de tip PINGRESP. Aceasta va moșteni din clasa generică MQTTPacket și va suprascrie metodele \emph{parseFixedHeader}.
 În urma execuției metodelor, vor fi generate dicționare care conțin datele parsate în format human-readable.
@@ -373,6 +374,7 @@ Astfel, definițiile metodelor vor deveni următoarele :
 		'controlType' : int, 
 	)
 \end{verbatim}
+Metodele \emph{parseVariableHeader} și \emph{parsePayloadHeader} nu vor avea nevoie de suprascriere pentru că în specificație este menționat faptul că pachetele de tip PINGRESP nu au nici header variabil, nici payload.
 \subsubsection{Clasa AuthPacket}
 Clasa AuthPacket descrie un pachet MQTT de tip AUTH. Aceasta va moșteni din clasa generică MQTTPacket și va suprascrie metodele \emph{parseFixedHeader} si \emph{parseVariableHeader}.
 În urma execuției metodelor, vor fi generate dicționare care conțin datele parsate în format human-readable.
@@ -395,6 +397,7 @@ Astfel, definițiile metodelor vor deveni următoarele :
     )
 }
 \end{verbatim}
+Metoda \emph{parsePayloadHeader} nu va avea nevoie de suprascriere pentru că în specificație este menționat faptul că pachetele de tip AUTH nu au payload.
 \subsubsection{Clasa MalformedPacket}
 Clasa MalformedPacket descrie un pachet MQTT malformat. Aceasta nu va suprascrie funcții și va fi utilizată pentru marca un request greșit.
 \subsection{Clasa Session}
