@@ -2,3 +2,4 @@ docs/*.log
 data/*
 config/*.conf
 logs/*.log
+src/__pycache__
