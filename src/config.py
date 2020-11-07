@@ -3,13 +3,13 @@ from os import path
 
 CONFIG_PATH = '../config/srv.conf'
 KNOWN_AUTH_METHODS = ['userpass']
-KNOWN_CONF_STRINGS = ['AllowPublicAccess', 'AuthenticationMethods', 'KnownClientsPath', 'HistoryMessageQueueSize', 'RetainedMessagesPath', 'DefaultKeepAlive', 'TopicHierarchyListPath', 'MaxPacketSize', 'MaxQoS1QueueSize', 'MaxQoS2QueueSize','MaxSupportedTopics','SessionsPath', 'AllowWildcard']
+KNOWN_CONF_STRINGS = ['AllowPublicAccess', 'AuthenticationMethods', 'KnownClientsPath', 'HistoryMessageQueueSize', 'RetainedMessagesPath', 'DefaultKeepAlive', 'TopicHierarchyListPath', 'MaxPacketSize', 'MaxQoS1QueueSize', 'MaxQoS2QueueSize','MaxSupportedTopics','SessionsPath', 'AllowWildcard', 'KnownTopicsPath']
 
 
 
 class Config:
     def __init__(self):
-        self.config={'AllowPublicAccess':True, 'AuthenticationMethods':[], 'KnownClientsPath':"", 'HistoryMessageQueueSize':10,'RetainedMessagesPath':"", 'DefaultKeepAlive':60, 'MaxPacketSize':268435456, 'MaxQoS1QueueSize':15, 'MaxQoS2QueueSize':15, 'MaxSupportedTopics':30, 'SessionsPath':"", 'AllowWildcard':False}
+        self.config={'AllowPublicAccess':True, 'AuthenticationMethods':[], 'KnownClientsPath':"", 'HistoryMessageQueueSize':10,'RetainedMessagesPath':"", 'DefaultKeepAlive':60, 'MaxPacketSize':268435456, 'MaxQoS1QueueSize':15, 'MaxQoS2QueueSize':15, 'MaxSupportedTopics':30, 'SessionsPath':"", 'AllowWildcard':False, 'KnownTopicsPath':""}
 
     def __str__(self):
         return str(self.config)
@@ -60,6 +60,10 @@ class Config:
             if path.exists(value):
                 return value
             raise FileNotFoundError("Unknown filepath :{} for SessionsPath".format(value))
+        elif conf_string=="KnownTopicsPath":
+            if path.exists(value):
+                return value
+            raise FileNotFoundError("Unknown filepath :{} for KnownTopicsPath".format(value))
         elif conf_string=="AllowWildcard":
             if value=="yes":
                 return True

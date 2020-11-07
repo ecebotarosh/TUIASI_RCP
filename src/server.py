@@ -4,7 +4,10 @@ import socket
 import threading
 import logging
 import sys
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 logging.basicConfig(filename='../logs/server.log', level=logging.DEBUG)
 
 
@@ -27,11 +30,11 @@ class ClientThread(threading.Thread):
         sys.exit(0)
         
 
-LOCALHOST = "CHANGEME"
-PORT = 8080
+IP = os.getenv("IP")
+PORT = os.getenv("PORT")
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind((LOCALHOST, PORT))
+server.bind((IP, PORT))
 print("Server started")
 print("Waiting for client request..")
 while True:

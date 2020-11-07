@@ -1,4 +1,4 @@
 docs/*.log
 data/*
-config/*
+config/*.conf
 logs/*.log

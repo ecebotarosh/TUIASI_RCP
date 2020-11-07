@@ -9,5 +9,6 @@ MaxQoS1QueueSize 15
 MaxQos2QueueSize 15
 MaxSupportedTopics 30
 SessionsPath /home/linuser/Uni/An3/RC-P/TUIASI_RCP/data/sessions.dat
+KnownTopicsPath /home/linuser/Uni/An3/RC-P/TUIASI_RCP/data/known_topics.conf
 AllowWildcard no
 
