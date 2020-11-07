@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 SERVER = os.getenv("IP")
-PORT = os.getenv("PORT")
+PORT = int(os.getenv("PORT"))
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((SERVER, PORT))
 client.sendall(bytes("This is from Client", 'UTF-8'))
