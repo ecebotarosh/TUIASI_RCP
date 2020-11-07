@@ -1,0 +1,13 @@
+AllowPublicAccess yes
+AuthenticationMethods userpass
+KnownClientsPath /home/linuser/Uni/An3/RC-P/TUIASI_RCP/data/known_clients.conf
+HistoryMessageQueueSize 10
+RetainedMessagesPath /home/linuser/Uni/An3/RC-P/TUIASI_RCP/data/retained_messages.dat
+DefaultKeepAlive 60
+MaxPacketSize 268435456
+MaxQoS1QueueSize 15
+MaxQos2QueueSize 15
+MaxSupportedTopics 30
+SessionsPath /home/linuser/Uni/An3/RC-P/TUIASI_RCP/data/sessions.dat
+AllowWildcard no
+
