@@ -17,7 +17,7 @@ class ConnectPacket(MQTTPacket):
 		variableHeader = self.data[2:12]
 		protocol_name_bytes = struct.unpack(">6s", variableHeader[:6])
 		length_msb, length_lsb, name = struct.unpack(">2b4s", variableHeader[:6])
-		self.variable['length']=length_msb*0xff+length_lsb
+		self.variable['length']=(length_msb<<8)+length_lsb
 		self.variable['name']=name.decode("utf-8")
 		variableHeader = variableHeader[6:]
 		protocol_version = struct.unpack(">B", variableHeader[:1])[0]
@@ -33,7 +33,7 @@ class ConnectPacket(MQTTPacket):
 		self.variable['reserved'] = (connectFlags & 1 == 1)
 		variableHeader=variableHeader[1:]
 		keep_alive_msb, keep_alive_lsb = struct.unpack(">2B", variableHeader[:2])
-		keep_alive = keep_alive_msb*0xff+keep_alive_lsb
+		keep_alive = (keep_alive_msb<<8)+keep_alive_lsb
 		self.variable['KeepAlive']=keep_alive
 		
 
