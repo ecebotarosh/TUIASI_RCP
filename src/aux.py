@@ -46,6 +46,17 @@ class CustomUTF8:
     def decode(msg:bytes)->str:
         return msg[2:].decode('utf-8')
 
+
+class BinaryData:
+    def __init__(self, data):
+        self.data=data
+        
+    def getLength(self) -> int:
+        return struct.unpack(">H", self.data[:2])[0]
+
+    def getData(self) -> bytes:
+        return self.data[2:]
+
 if __name__=="__main__": 
     encoded = CustomUTF8.encode("hello")
     print(encoded)
@@ -56,3 +67,7 @@ if __name__=="__main__":
     print(result)
     result = VariableByte.decode(result)
     print(result)
+
+
+class MQTTError(Exception):
+    pass
