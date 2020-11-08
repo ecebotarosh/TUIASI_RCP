@@ -3,6 +3,7 @@
 import struct
 import sys
 from MQTTPacket import MQTTPacket
+from aux import VariableByte
 
 
 class ConnectPacket(MQTTPacket):
@@ -13,8 +14,9 @@ class ConnectPacket(MQTTPacket):
 		self.payload={}
 			
 
-	def parseVariableHeader(self):
-		variableHeader = self.data[2:12]
+	def parseVariableHeader(self) -> None:
+		offset = len(VariableByte.encode(self.fixed['remainingLength']))+1
+		variableHeader = self.data[offset:10+offset]
 		protocol_name_bytes = struct.unpack(">6s", variableHeader[:6])
 		length_msb, length_lsb, name = struct.unpack(">2b4s", variableHeader[:6])
 		self.variable['length']=(length_msb<<8)+length_lsb
@@ -37,11 +39,14 @@ class ConnectPacket(MQTTPacket):
 		self.variable['KeepAlive']=keep_alive
 		
 
-	def parsePayloadHeader(self):
-		pass		
+	def parsePayloadHeader(self) -> bool:
+		offset = len(VariableByte.encode(self.fixed['remainingLength']))+1
+		payloadHeader=self.data[10+offset:]
+		print(payloadHeader)
+		
 
 if __name__=="__main__":
-	byte_data = b"\x10\x0f\x00\x04MQTT\x05\xfe\x00\xff"
+	byte_data = b"\x10\x0f\x00\x04MQTT\x05\xfe\x01\xff"
 	data = struct.pack(">{}s".format(len(byte_data)), byte_data)
 	packet = ConnectPacket(data)
 	packet.parseFixedHeader()
