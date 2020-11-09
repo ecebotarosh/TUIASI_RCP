@@ -38,6 +38,7 @@ class ConnectPacket(MQTTPacket):
 		keep_alive_msb, keep_alive_lsb = struct.unpack("!2B", variableHeader[:2])
 		keep_alive = (keep_alive_msb<<8)+keep_alive_lsb
 		self.variable['KeepAlive']=keep_alive
+		#10 bytes is the common variable header, without properties
 		properties=self.data[10+self.fixed_size:]
 		num=b""
 		for byte in properties:
@@ -53,7 +54,7 @@ class ConnectPacket(MQTTPacket):
 		self.variable['properties']['userProperty']={}
 		
 		self.variable_size=self.variable['propertyLength']+10
-		properties=properties[10+self.fixed_size+required:]
+		properties=properties[required:]
 		i=0
 		while i<self.variable['propertyLength']:
 			if properties[i]==0x11:
@@ -98,8 +99,10 @@ class ConnectPacket(MQTTPacket):
 				str2 = struct.unpack("!{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START), properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
 				if CustomUTF8.decode(str1) not in self.variable['properties']['userProperty'].keys():
 					self.variable['properties']['userProperty'][CustomUTF8.decode(str1)]=[CustomUTF8.decode(str2)]
+					print("Initialized userProperty : {} with {}".format(CustomUTF8.decode(str1), CustomUTF8.decode(str2)))
 				else:
 					self.variable['properties']['userProperty'][CustomUTF8.decode(str1)].append(CustomUTF8.decode(str2))
+					print("Added {1} to userProperty {0}".format(CustomUTF8.decode(str1), CustomUTF8.decode(str2)))
 				i+=OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START+3
 			if properties[i]==0x15:
 				if 'authMethod' not in self.variable['properties'].keys():
