@@ -12,7 +12,7 @@ class VariableByte:
             X = X // 128
             if X > 0:
                 encodedByte = encodedByte | 128
-            output+=struct.pack("<B",encodedByte)
+            output+=struct.pack("!B",encodedByte)
         return output
 
     @staticmethod
@@ -40,7 +40,7 @@ class CustomUTF8:
         length = len(msg)
         length_msb = length // 0x100
         length_lsb = length % 0x100
-        return struct.pack(">2B{}s".format(length), length_msb, length_lsb, bytes(msg, 'utf-8'))
+        return struct.pack("!2B{}s".format(length), length_msb, length_lsb, bytes(msg, 'utf-8'))
 
     @staticmethod
     def decode(msg:bytes)->str:
@@ -52,7 +52,7 @@ class BinaryData:
         self.data=data
         
     def getLength(self) -> int:
-        return struct.unpack(">H", self.data[:2])[0]
+        return struct.unpack("!H", self.data[:2])[0]
 
     def getData(self) -> bytes:
         return self.data[2:]

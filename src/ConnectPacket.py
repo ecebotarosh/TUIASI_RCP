@@ -18,15 +18,15 @@ class ConnectPacket(MQTTPacket):
 
 	def parseVariableHeader(self) -> None:
 		variableHeader = self.data[self.fixed_size:]
-		protocol_name_bytes = struct.unpack(">6s", variableHeader[:6])
-		length_msb, length_lsb, name = struct.unpack(">2b4s", variableHeader[:6])
+		protocol_name_bytes = struct.unpack("!6s", variableHeader[:6])
+		length_msb, length_lsb, name = struct.unpack("!2b4s", variableHeader[:6])
 		self.variable['length']=(length_msb<<8)+length_lsb
 		self.variable['name']=name.decode("utf-8")
 		variableHeader = variableHeader[6:]
-		protocol_version = struct.unpack(">B", variableHeader[:1])[0]
+		protocol_version = struct.unpack("!B", variableHeader[:1])[0]
 		self.variable['protocolVersion']=protocol_version
 		variableHeader=variableHeader[1:]
-		connectFlags = struct.unpack(">B", variableHeader[:1])[0]
+		connectFlags = struct.unpack("!B", variableHeader[:1])[0]
 		self.variable['usernameFlag'] = (connectFlags & 128 == 128)
 		self.variable['passwordFlag'] = (connectFlags & 64 == 64)
 		self.variable['willRetain'] = (connectFlags & 32 == 32)
@@ -35,17 +35,17 @@ class ConnectPacket(MQTTPacket):
 		self.variable['cleanStart'] = (connectFlags & 2 == 2)
 		self.variable['reserved'] = (connectFlags & 1 == 1)
 		variableHeader=variableHeader[1:]
-		keep_alive_msb, keep_alive_lsb = struct.unpack(">2B", variableHeader[:2])
+		keep_alive_msb, keep_alive_lsb = struct.unpack("!2B", variableHeader[:2])
 		keep_alive = (keep_alive_msb<<8)+keep_alive_lsb
 		self.variable['KeepAlive']=keep_alive
 		properties=self.data[10+self.fixed_size:]
 		num=b""
 		for byte in properties:
-			num+=struct.pack("<B", byte)
+			num+=struct.pack("!B", byte)
 			if byte<0x80:
 				break
 		required=len(num)
-		self.variable['propertyLength'] = struct.unpack(">{}s".format(required), num)[0]
+		self.variable['propertyLength'] = struct.unpack("!{}s".format(required), num)[0]
 		self.variable['propertyLength'] = VariableByte.decode(self.variable['propertyLength'])
 		self.variable['properties']={}
 		self.variable['properties']['topicAliasMaximum']=0
@@ -55,16 +55,16 @@ class ConnectPacket(MQTTPacket):
 		self.variable_size=self.variable['propertyLength']+10
 		properties=properties[10+self.fixed_size+required:]
 		i=0
-		while i<len(properties):
+		while i<self.variable['propertyLength']:
 			if properties[i]==0x11:
 				if 'sessionExpiry' not in self.variable['properties'].keys():
-					self.variable['properties']['sessionExpiry']=struct.unpack(">I", properties[i+1:i+5])[0]
+					self.variable['properties']['sessionExpiry']=struct.unpack("!I", properties[i+1:i+5])[0]
 					i+=3
 				else:
 					raise MQTTError("Malformed Packet : sessionExpiry already exists")
 			if properties[i]==0x21:
 				if 'receiveMaximum' not in self.variable['properties'].keys():
-					self.variable['properties']['receiveMaximum']=struct.unpack(">H", properties[i+1:i+3])[0]
+					self.variable['properties']['receiveMaximum']=struct.unpack("!H", properties[i+1:i+3])[0]
 					if self.variable['properties']['receiveMaximum']==0:
 						raise MQTTError("Malformed Packet : sessionExpiry is set to 0")
 					i+=1
@@ -72,30 +72,30 @@ class ConnectPacket(MQTTPacket):
 					raise MQTTError("Malformed Packet : receiveMaximum already exists")
 			if properties[i]==0x27:
 				if 'maximumPacketSize' not in self.variable['properties'].keys():
-					self.variable['properties']['maximumPacketSize']=struct.unpack(">I", properties[i+1:i+5])[0]
+					self.variable['properties']['maximumPacketSize']=struct.unpack("!I", properties[i+1:i+5])[0]
 					if self.variable['properties']['maximumPacketSize']==0:
 						raise MQTTError("Malformed Packet : sessionExpiry is set to 0")
 					i+=3
 				else:
 					raise MQTTError("Malformed Packet : sessionExpiry already exists")
 			if properties[i]==0x22:
-				self.variable['properties']['topicAliasMaximum']=struct.unpack(">H", properties[i+1:i+3])[0]
+				self.variable['properties']['topicAliasMaximum']=struct.unpack("!H", properties[i+1:i+3])[0]
 				i+=1
 			if properties[i]==0x19:
-				self.variable['properties']['requestResponseInformation']=struct.unpack(">B", properties[i+1:i+2])[0]
+				self.variable['properties']['requestResponseInformation']=struct.unpack("!B", properties[i+1:i+2])[0]
 				if self.variable['properties']['requestResponseInformation'] not in [0, 1]:
 					raise MQTTError("Malformed Packet : requestResponseInformation is not 0 or 1")
 			if properties[i]==0x26:
 				OFFSET_TO_READ_1_START=i+1
 				OFFSET_TO_READ_1_END=i+3
 				to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-				str1size = struct.unpack(">H", to_read)[0]
-				str1 = struct.unpack(">{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0]
+				str1size = struct.unpack("!H", to_read)[0]
+				str1 = struct.unpack("!{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0]
 				OFFSET_TO_READ_2_START=i+3+str1size
 				OFFSET_TO_READ_2_END=i+5+str1size
 				to_read2 = properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END]
-				str2size = struct.unpack(">H", to_read2)[0]
-				str2 = struct.unpack(">{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START), properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
+				str2size = struct.unpack("!H", to_read2)[0]
+				str2 = struct.unpack("!{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START), properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
 				if CustomUTF8.decode(str1) not in self.variable['properties']['userProperty'].keys():
 					self.variable['properties']['userProperty'][CustomUTF8.decode(str1)]=[CustomUTF8.decode(str2)]
 				else:
@@ -106,8 +106,8 @@ class ConnectPacket(MQTTPacket):
 					OFFSET_TO_READ_1_START=i+1
 					OFFSET_TO_READ_1_END=i+3
 					to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-					str1size = struct.unpack(">H", to_read)[0]
-					self.variable['properties']['authMethod'] = CustomUTF8.decode(struct.unpack(">{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0])
+					str1size = struct.unpack("!H", to_read)[0]
+					self.variable['properties']['authMethod'] = CustomUTF8.decode(struct.unpack("!{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0])
 					i+=OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START+str1size-1
 				else:
 					raise MQTTError("Malformed Packet : authMethod already exists")
@@ -116,25 +116,45 @@ class ConnectPacket(MQTTPacket):
 					OFFSET_TO_READ_START=i+1
 					OFFSET_TO_READ_END=i+3
 					to_read = properties[OFFSET_TO_READ_START:OFFSET_TO_READ_END]
-					datasize = struct.unpack(">H", to_read)[0]
+					datasize = struct.unpack("!H", to_read)[0]
 					self.variable['properties']['authData'] = properties[OFFSET_TO_READ_END:OFFSET_TO_READ_END+datasize]
 					i+=OFFSET_TO_READ_END-OFFSET_TO_READ_START+datasize-1
 			i=i+1
 
 	def parsePayloadHeader(self):
-		offset = self.fixed_size+self.variable_size
+		offset = self.fixed_size+self.variable_size+1
 		self.payload_size=self.fixed['remainingLength']-self.variable_size
 		payloadHeader = self.data[offset:]
-		
+		required=struct.unpack("!H", payloadHeader[:2])[0]
+		self.payload['clientID'] = struct.unpack("!{}s".format(required+2), payloadHeader[:required+2])[0]
+		self.payload['clientID'] = CustomUTF8.decode(self.payload['clientID'])
+		payloadHeader = payloadHeader[required+2:]
+		if self.variable['willFlag']:
+			self.payload['willProperties']={}
+			num=b""
+			for byte in payloadHeader:
+				num+=struct.pack("!B", byte)
+				if byte<0x80:
+					break
+		self.payload['willProperties']['willLength']=VariableByte.decode(num)
+		i=0
+		while i<self.payload['willProperties']['willLength']:
+			if payloadHeader[i]==0x18:
+
+
 
 if __name__=="__main__":
 	
+	clientID = CustomUTF8.encode("r3allyrandomid")
+
+	willLength = VariableByte.encode(80)
 	variableContents = b"\x00\x04MQTT\x05\xfe\x01\xff" 
-	properties=b"\x11\x00\x00\x00\x02\x21\x00\x02\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Emil")+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("bunaziua")+b"\x26"+CustomUTF8.encode("hello")+CustomUTF8.encode("Nicky")+b"\x15"+CustomUTF8.encode("userpass")+b"\x16\x00\x04\x02\x03\x04\x05"+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Andrei")+b"\x61"
+	properties=b"\x11\x00\x00\x00\x02\x21\x00\x02\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Emil")+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("bunaziua")+b"\x26"+CustomUTF8.encode("hello")+CustomUTF8.encode("Nicky")+b"\x15"+CustomUTF8.encode("userpass")+b"\x16\x00\x04\x02\x03\x04\x05"+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Andrei")
 	propertyLength=VariableByte.encode(len(properties))
-	byte_data = b"\x10"+VariableByte.encode(len(variableContents+propertyLength+properties))
-	packetContents = byte_data+variableContents+propertyLength+properties
-	data = struct.pack(">{}s".format(len(packetContents)), packetContents)
+	byte_data = b"\x10"+VariableByte.encode(len(variableContents+propertyLength+properties+clientID+willLength))
+
+	packetContents = byte_data+variableContents+propertyLength+properties+clientID+willLength
+	data = struct.pack("!{}s".format(len(packetContents)), packetContents)
 	packet = ConnectPacket(data)
 	packet.parseFixedHeader()
 	packet.parseVariableHeader()
