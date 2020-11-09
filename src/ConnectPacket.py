@@ -138,10 +138,9 @@ class ConnectPacket(MQTTPacket):
 					break
 		self.payload['willProperties']['willLength']=VariableByte.decode(num)
 		i=0
-		while i<self.payload['willProperties']['willLength']:
-			if payloadHeader[i]==0x18:
-
-
+		# while i<self.payload['willProperties']['willLength']:
+		# 	if payloadHeader[i]==0x18:
+		# 		print("Hello")	
 
 if __name__=="__main__":
 	
