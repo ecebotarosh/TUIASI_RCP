@@ -213,7 +213,7 @@ class ConnectPacket(MQTTPacket):
                     else:
                         raise MQTTError(
                             "Malformed Packet : payloadFormatIndicator already exists")
-                    i += 2
+                    i += 1
                 if payloadHeader[i] == 0x02:
                     if 'messageExpiryInterval' not in self.payload['willProperties'].keys():
                         self.payload['willProperties']['messageExpiryInterval'] = (
