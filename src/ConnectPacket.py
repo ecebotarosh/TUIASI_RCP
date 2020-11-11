@@ -210,10 +210,12 @@ class ConnectPacket(MQTTPacket):
                     if 'payloadFormatIndicator' not in self.payload['willProperties'].keys():
                         self.payload['willProperties']['payloadFormatIndicator'] = struct.unpack(
                             "!B", payloadHeader[i+1:i+2])[0]
+                        if self.payload['willProperties']['payloadFormatIndicator'] not in [0, 1]:
+                            raise MQTTError("Malformed Packet : payloadFormatIndicator not in 0 or 1")
                     else:
                         raise MQTTError(
                             "Malformed Packet : payloadFormatIndicator already exists")
-                    i += 2
+                    i += 1
                 if payloadHeader[i] == 0x02:
                     if 'messageExpiryInterval' not in self.payload['willProperties'].keys():
                         self.payload['willProperties']['messageExpiryInterval'] = (
@@ -278,15 +280,13 @@ class ConnectPacket(MQTTPacket):
             if 'payloadFormatIndicator' not in self.payload['willProperties'].keys():
                 self.payload['willProperties']['payloadFormatIndicator'] = 0
             if 'messageExpiryInterval' not in self.payload['willProperties'].keys():
-                self.payload['willProperties']['messageExpiryInterval'] = (
-                    False, 0)
+                self.payload['willProperties']['messageExpiryInterval'] = (False, 0)
 
 
 
 if __name__ == "__main__":
 
     clientID = CustomUTF8.encode("r3allyrandomid")
-
     willDelay = struct.pack("!I", 35)
     payloadFormatIndicator = b"\x01\x01"
     messageExpiryInterval = b"\x02"+struct.pack("!I", 32)
