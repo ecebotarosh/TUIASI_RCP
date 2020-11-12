@@ -3,7 +3,7 @@
 import struct
 import sys
 from MQTTPacket import MQTTPacket
-from aux import VariableByte, MQTTError, CustomUTF8, BinaryData
+from aux import *
 
 class PublishPacket(MQTTPacket):
 	def parseFixedHeader(self):
@@ -26,12 +26,9 @@ class PublishPacket(MQTTPacket):
 
 	def parseVariableHeader(self)->None:
 		variableHeader=self.data[self.fixed_size:]
-		length_msb,length_lsb = struct.unpack("!2B", variableHeader[:2])
-		self.variable['length']=(length_msb<<8)+length_lsb
-		variableHeader=variableHeader[2:]
-		name=struct.unpack("!{}s".format(self.variable['length']), variableHeader[:self.variable['length']])[0]
-		self.variable['name']=name.decode("utf-8")
-		variableHeader=variableHeader[self.variable['length']:]
+		offset,self.variable['name']=readCustomUTF8String(variableHeader)
+		self.variable['length']=offset-2
+		variableHeader=variableHeader[2+self.variable['length']:]
 		packet_identifier_msb,packet_identifier_lsb=struct.unpack("!2B",variableHeader[:2])
 		packet_identifier=(packet_identifier_msb<<8 )+ packet_identifier_lsb
 		self.variable['packetIdentifier']=packet_identifier
@@ -51,8 +48,6 @@ class PublishPacket(MQTTPacket):
 		self.variable['properties']['userProperty']={}
 		self.variable_size=self.variable['propertyLength']+self.variable['length']+4+required
 		properties=properties[required:]
-		#============================================================================================
-
 		i=0
 		while i<self.variable['propertyLength']:
 			if properties[i]==0x01:
@@ -64,7 +59,6 @@ class PublishPacket(MQTTPacket):
 			if properties[i]==0x02:
 				if 'messageExpiryInterval' not in self.variable['properties'].keys():
 					self.variable['properties']['messageExpiryInterval']=struct.unpack("!I",properties[i+1:i+5])[0]
-					#i+=4 
 				else:
 					raise MQTTError("Malformed Packet : messageExpiryInterval already exists")
 				i+=4
@@ -79,39 +73,28 @@ class PublishPacket(MQTTPacket):
 					raise MQTTError("Malformed Packet : topicAlias already exists")
 				i+=2
 			if properties[i]==0x08:
-				OFFSET_TO_READ_1_START = i+1
-				OFFSET_TO_READ_1_END = i+3
-				to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-				str1size = struct.unpack("!H", to_read)[0]
+				offset1,str1=readCustomUTF8String(properties[i+1:])
 				if 'responseTopic' not in self.variable['properties'].keys():	
-					self.variable['properties']['responseTopic'] = CustomUTF8.decode(struct.unpack("!{}s".format(
-						str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0])
+					self.variable['properties']['responseTopic'] = str1
 				else:
 					raise MQTTError("Malformed Packet : responseTopic already exists")
-				i += OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START+str1size
+				i += offset1
 			if properties[i]==0x09:
 				if 'correlationData' not in self.variable['properties'].keys():
-					length = struct.unpack("!H", properties[i+1:i+3])[0]
-					self.variable['properties']['correlationData'] = properties[i+1:i+3+length]
+					offset1,data1=readBinaryData(properties[i+1:])
+					self.variable['properties']['correlationData']=data1
+					i +=offset1
 				else:
 					raise MQTTError("Malformed Packet : correlationData already exists")
-				i += 2+length
+				
 			if properties[i] == 0x26:
-				OFFSET_TO_READ_1_START = i+1
-				OFFSET_TO_READ_1_END = i+3
-				to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-				str1size = struct.unpack("!H", to_read)[0]
-				str1 = struct.unpack("!{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0]
-				OFFSET_TO_READ_2_START = i+3+str1size
-				OFFSET_TO_READ_2_END = i+5+str1size
-				to_read2 = properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END]
-				str2size = struct.unpack("!H", to_read2)[0]
-				str2 = struct.unpack("!{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START), properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
-				if CustomUTF8.decode(str1) not in self.variable['properties']['userProperty'].keys():
-					self.variable['properties']['userProperty'][CustomUTF8.decode(str1)] = [CustomUTF8.decode(str2)]
+				offset1,str1=readCustomUTF8String(properties[i+1:])
+				offset2,str2=readCustomUTF8String(properties[i+1+offset1:])
+				if str1 not in self.variable['properties']['userProperty'].keys():
+					self.variable['properties']['userProperty'][str1] = [str2]
 				else:
-					self.variable['properties']['userProperty'][CustomUTF8.decode(str1)].append(CustomUTF8.decode(str2))
-				i += 4+len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
+					self.variable['properties']['userProperty'][str1].append(str2)
+				i += offset1+offset2
 			if properties[i]==0x0B:
 				buff=properties[i+1:]
 				num = b""
@@ -123,17 +106,12 @@ class PublishPacket(MQTTPacket):
 					self.variable['properties']['subscriptionIdentifier'] = VariableByte.decode(num)
 				i+=len(num)
 			if properties[i]==0x03:
-				OFFSET_TO_READ_1_START = i+1
-				OFFSET_TO_READ_1_END = i+3
-				to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-				str1size = struct.unpack("!H", to_read)[0]
+				offset1,str1=readCustomUTF8String(properties[i+1:])
 				if 'contentType' not in self.variable['properties'].keys():	
-					self.variable['properties']['contentType'] = CustomUTF8.decode(struct.unpack("!{}s".format(
-						str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0])
+					self.variable['properties']['contentType'] = str1
 				else:
 					raise MQTTError("Malformed Packet : rcontentType already exists")
-				i += OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START+str1size
-
+				i += offset1
 			i+=1
 
 		if 'payloadFormatIndicator' not in self.variable['properties'].keys():
@@ -149,8 +127,8 @@ if __name__=="__main__":
 	mess=b"\x02"+struct.pack("!I", 32)
 	respons=b"\x08"+CustomUTF8.encode("Raspuns")
 	topic=b"\x23\x00\x10"
-	user = b"\x26"+CustomUTF8.encode("salut_din")+CustomUTF8.encode("dev")+b"\x26"+CustomUTF8.encode("KY")+CustomUTF8.encode("IZI")
-	prop=b"\x01\x01"+mess+respons+topic+user+b"\x09\x00\x05Binar"+b"\x0B"+VariableByte.encode(115)
+	user = b"\x26"+CustomUTF8.encode("user1")+CustomUTF8.encode("utilizeaza dev")+b"\x26"+CustomUTF8.encode("user2")+CustomUTF8.encode("add commit")
+	prop=b"\x01\x01"+mess+respons+topic+user+b"\x09\x00\x02\x00\x01"+b"\x0B"+VariableByte.encode(115)
 	propLength = VariableByte.encode(len(prop))
 	varHeader=CustomUTF8.encode("test/rc")+packetIdentifier+propLength+prop
 
