@@ -3,7 +3,7 @@
 import struct
 import sys
 from MQTTPacket import MQTTPacket
-from aux import VariableByte, MQTTError, CustomUTF8, BinaryData
+from aux import VariableByte, MQTTError, CustomUTF8, BinaryData, readCustomUTF8String, readBinaryData
 
 
 class ConnectPacket(MQTTPacket):
@@ -18,12 +18,9 @@ class ConnectPacket(MQTTPacket):
 
     def parseVariableHeader(self) -> None:
         variableHeader = self.data[self.fixed_size:]
-        protocol_name_bytes = struct.unpack("!6s", variableHeader[:6])
-        length_msb, length_lsb, name = struct.unpack(
-            "!2b4s", variableHeader[:6])
-        self.variable['length'] = (length_msb << 8)+length_lsb
-        self.variable['name'] = name.decode("utf-8")
-        variableHeader = variableHeader[6:]
+        offset, self.variable['name'] = readCustomUTF8String(variableHeader)
+        self.variable['length']=offset-2
+        variableHeader = variableHeader[offset:]
         protocol_version = struct.unpack("!B", variableHeader[:1])[0]
         self.variable['protocolVersion'] = protocol_version
         variableHeader = variableHeader[1:]
@@ -38,8 +35,7 @@ class ConnectPacket(MQTTPacket):
         variableHeader = variableHeader[1:]
         keep_alive_msb, keep_alive_lsb = struct.unpack(
             "!2B", variableHeader[:2])
-        keep_alive = (keep_alive_msb << 8)+keep_alive_lsb
-        self.variable['KeepAlive'] = keep_alive
+        self.variable['KeepAlive'] = (keep_alive_msb << 8)+keep_alive_lsb
         # 10 bytes is the common variable header, without properties
         properties = self.data[10+self.fixed_size:]
         num = b""
@@ -121,45 +117,25 @@ class ConnectPacket(MQTTPacket):
                         "Malformed Packet : requestProblemInformation already exists")
 
             if properties[i] == 0x26:
-                OFFSET_TO_READ_1_START = i+1
-                OFFSET_TO_READ_1_END = i+3
-                to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-                str1size = struct.unpack("!H", to_read)[0]
-                str1 = struct.unpack("!{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START),
-                                     properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0]
-                OFFSET_TO_READ_2_START = i+3+str1size
-                OFFSET_TO_READ_2_END = i+5+str1size
-                to_read2 = properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END]
-                str2size = struct.unpack("!H", to_read2)[0]
-                str2 = struct.unpack("!{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START),
-                                     properties[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
-                if CustomUTF8.decode(str1) not in self.variable['properties']['userProperty'].keys():
-                    self.variable['properties']['userProperty'][CustomUTF8.decode(str1)] = [
-                        CustomUTF8.decode(str2)]
+                offset1, str1 = readCustomUTF8String(properties[i+1:])
+                offset2, str2 = readCustomUTF8String(properties[i+1+offset1:])
+                if str1 not in self.variable['properties']['userProperty'].keys():
+                    self.variable['properties']['userProperty'][str1] = [str2]
                 else:
-                    self.variable['properties']['userProperty'][CustomUTF8.decode(
-                        str1)].append(CustomUTF8.decode(str2))
-                i += 4+len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
+                    self.variable['properties']['userProperty'][str1].append(str2)
+                i += offset1+offset2
+
             if properties[i] == 0x15:
                 if 'authMethod' not in self.variable['properties'].keys():
-                    OFFSET_TO_READ_1_START = i+1
-                    OFFSET_TO_READ_1_END = i+3
-                    to_read = properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-                    str1size = struct.unpack("!H", to_read)[0]
-                    self.variable['properties']['authMethod'] = CustomUTF8.decode(struct.unpack("!{}s".format(
-                        str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), properties[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0])
-                    i += OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START+str1size
+                    offset, self.variable['properties']['authMethod'] = readCustomUTF8String(properties[i+1:])
+                    i += 2+len(self.variable['properties']['authMethod'])
                 else:
                     raise MQTTError(
                         "Malformed Packet : authMethod already exists")
             if properties[i] == 0x16:
                 if 'authData' not in self.variable['properties'].keys():
-                    OFFSET_TO_READ_START = i+1
-                    OFFSET_TO_READ_END = i+3
-                    to_read = properties[OFFSET_TO_READ_START:OFFSET_TO_READ_END]
-                    datasize = struct.unpack("!H", to_read)[0]
-                    self.variable['properties']['authData'] = properties[OFFSET_TO_READ_END:OFFSET_TO_READ_END+datasize]
-                    i += OFFSET_TO_READ_END-OFFSET_TO_READ_START+datasize
+                    offset, self.variable['properties']['authData']=readBinaryData(properties[i+1:])
+                    i += offset
                 else:
                     raise MQTTError(
                         "Malformed Packet : authentication data already exists")
@@ -180,11 +156,9 @@ class ConnectPacket(MQTTPacket):
         offset = self.fixed_size+self.variable_size+1
         self.payload_size = self.fixed['remainingLength']-self.variable_size
         payloadHeader = self.data[offset:]
-        required = struct.unpack("!H", payloadHeader[:2])[0]
-        self.payload['clientID'] = struct.unpack(
-            "!{}s".format(required+2), payloadHeader[:required+2])[0]
-        self.payload['clientID'] = CustomUTF8.decode(self.payload['clientID'])
-        payloadHeader = payloadHeader[required+2:]
+        offset, self.payload['clientID'] = readCustomUTF8String(payloadHeader)
+        payloadHeader=payloadHeader[offset:]
+
         if self.variable['willFlag']:
             self.payload['willProperties'] = {}
             self.payload['willProperties']['userProperty'] = {}
@@ -227,23 +201,18 @@ class ConnectPacket(MQTTPacket):
                     
                 if payloadHeader[i] == 0x03:
                     if 'contentType' not in self.payload['willProperties'].keys():
-                        strlen = struct.unpack("!H", payloadHeader[i+1:i+3])[0]
-                        self.payload['willProperties']['contentType'] = struct.unpack(
-                            "!{}s".format(strlen), payloadHeader[i+3:i+strlen+3])[0].decode('utf-8')
+                        offset, self.payload['willProperties']['contentType'] = readCustomUTF8String(payloadHeader[i+1:])
                     else:
                         raise MQTTError(
                             "Malformed Packet : contentType already exists")
-                    i += 2+strlen
-
+                    i += offset
                 if payloadHeader[i] == 0x08:
                     if 'responseTopic' not in self.payload['willProperties'].keys():
-                        strlen = struct.unpack("!H", payloadHeader[i+1:i+3])[0]
-                        self.payload['willProperties']['responseTopic'] = struct.unpack(
-                            "!{}s".format(strlen), payloadHeader[i+3:i+strlen+3])[0].decode('utf-8')
+                        offset, self.payload['willProperties']['responseTopic'] = readCustomUTF8String(payloadHeader[i+1:])
                     else:
                         raise MQTTError(
                             "Malformed Packet : responseTopic already exists")
-                    i += 2+strlen
+                    i += offset
                 if payloadHeader[i] == 0x09:
                     if 'correlationData' not in self.payload['willProperties'].keys():
                         length = struct.unpack("!H", payloadHeader[i+1:i+3])[0]
@@ -252,28 +221,15 @@ class ConnectPacket(MQTTPacket):
                         raise MQTTError("Malformed Packet : correlationData already exists")
                     i += 2+length
                 if payloadHeader[i] == 0x26:
-                    OFFSET_TO_READ_1_START = i+1
-                    OFFSET_TO_READ_1_END = i+3
-                    to_read = payloadHeader[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END]
-                    str1size = struct.unpack("!H", to_read)[0]
-                    str1 = struct.unpack("!{}s".format(str1size+OFFSET_TO_READ_1_END-OFFSET_TO_READ_1_START), payloadHeader[OFFSET_TO_READ_1_START:OFFSET_TO_READ_1_END+str1size])[0]
-                    OFFSET_TO_READ_2_START = i+3+str1size
-                    OFFSET_TO_READ_2_END = i+5+str1size
-                    to_read2 = payloadHeader[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END]
-                    str2size = struct.unpack("!H", to_read2)[0]
-                    str2 = struct.unpack("!{}s".format(str2size+OFFSET_TO_READ_2_END-OFFSET_TO_READ_2_START), payloadHeader[OFFSET_TO_READ_2_START:OFFSET_TO_READ_2_END+str2size])[0]
-                    if CustomUTF8.decode(str1) not in self.payload['willProperties']['userProperty'].keys():
-                        self.payload['willProperties']['userProperty'][CustomUTF8.decode(str1)] = [CustomUTF8.decode(str2)]
+                    offset1, str1 = readCustomUTF8String(payloadHeader[i+1:])
+                    offset2, str2 = readCustomUTF8String(payloadHeader[i+1+offset1:])
+                    if str1 not in self.payload['willProperties']['userProperty'].keys():
+                        self.payload['willProperties']['userProperty'][str1] = [str2]
                     else:
-                        self.payload['willProperties']['userProperty'][CustomUTF8.decode(
-                            str1)].append(CustomUTF8.decode(str2))
-                    i += 4+len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
+                        self.payload['willProperties']['userProperty'][str1].append(str2)
+                    i += offset1+offset2
                 i += 1
 
-            #TODO : Check unusual offsets
-            offset = self.payload['willProperties']['willLength']
-            strlen = struct.unpack("!H", payloadHeader[offset:offset+2])[0]
-            self.payload['willTopic']=CustomUTF8.decode(struct.unpack("!{}s".format(2+strlen), payloadHeader[offset:offset+2+strlen])[0])
 
             if 'willDelayInterval' not in self.payload['willProperties'].keys():
                 self.payload['willProperties']['willDelayInterval'] = 0
@@ -281,7 +237,20 @@ class ConnectPacket(MQTTPacket):
                 self.payload['willProperties']['payloadFormatIndicator'] = 0
             if 'messageExpiryInterval' not in self.payload['willProperties'].keys():
                 self.payload['willProperties']['messageExpiryInterval'] = (False, 0)
+            
+            offset, self.payload['willTopic']=readCustomUTF8String(payloadHeader[self.payload['willProperties']['willLength']:])
+            payloadHeader=payloadHeader[offset+self.payload['willProperties']['willLength']:]
+            
+            offset, self.payload['willPayload']=readCustomUTF8String(payloadHeader)
+            payloadHeader=payloadHeader[offset:]
 
+        if self.variable['usernameFlag']:
+            offset, self.payload['username']=readCustomUTF8String(payloadHeader)
+            payloadHeader=payloadHeader[offset:]
+
+        if self.variable['passwordFlag']:
+            offset, self.payload['password']=readBinaryData(payloadHeader)
+            payloadHeader=payloadHeader[offset:]
 
 
 if __name__ == "__main__":
@@ -291,22 +260,25 @@ if __name__ == "__main__":
     payloadFormatIndicator = b"\x01\x01"
     messageExpiryInterval = b"\x02"+struct.pack("!I", 32)
     willTopic = CustomUTF8.encode("pc/temp")
+    willPayload = CustomUTF8.encode("this is a test message to be sent as a will payload and be submitted as key-value pair")
     correlationData = b"\x09"+b"\x00\x02\x04\x08"
     contentType = b"\x03"+CustomUTF8.encode("application/x-pdf")
     responseTopic = b"\x08"+CustomUTF8.encode("my response topic")
     userProperties = b"\x26"+CustomUTF8.encode("salut_din_will")+CustomUTF8.encode("dev")
-    will = b"\x18"+willDelay+ payloadFormatIndicator + messageExpiryInterval+userProperties+contentType+ correlationData 
+    will = b"\x18"+willDelay+ payloadFormatIndicator + messageExpiryInterval+userProperties+contentType+ correlationData
     willLength = VariableByte.encode(len(will))
-    otherProps = willTopic
+    username = CustomUTF8.encode("admin")
+    password = CustomUTF8.encode("password")
+    otherProps = willTopic+willPayload+username+password
     variableContents = b"\x00\x04MQTT\x05\xfe\x01\xff"
     properties = b"\x11\x00\x00\x00\x02\x21\x00\x02\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Emil")+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("bunaziua")+b"\x26"+CustomUTF8.encode(
         "hello")+CustomUTF8.encode("Nicky")+b"\x15"+CustomUTF8.encode("userpass")+b"\x16\x00\x04\x02\x03\x04\x05"+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Andrei")
     propertyLength = VariableByte.encode(len(properties))
     byte_data = b"\x10"+VariableByte.encode(
-        len(variableContents+propertyLength+properties+clientID+willLength+will+willTopic))
+        len(variableContents+propertyLength+properties+clientID+willLength+will+otherProps))
 
     packetContents = byte_data+variableContents + \
-        propertyLength+properties+clientID+willLength+will + willTopic
+        propertyLength+properties+clientID+willLength+will + otherProps
     data = struct.pack("!{}s".format(len(packetContents)), packetContents)
     packet = ConnectPacket(data)
     packet.parseFixedHeader()
