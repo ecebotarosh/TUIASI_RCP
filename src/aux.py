@@ -69,5 +69,16 @@ if __name__=="__main__":
     print(result)
 
 
+def readCustomUTF8String(data : bytes) -> (int, str):
+    length = struct.unpack("!H", data[:2])[0]
+    length, string =struct.unpack("!H{}s".format(length), data[:2+length])
+    string = string.decode('utf-8')
+    return (2+length, string)
+
+def readBinaryData(data : bytes) -> (int, bytes):
+    length = struct.unpack("!H", data[:2])[0]
+    length, binaryData =struct.unpack("!H{}s".format(length), data[:2+length])
+    return (2+length, binaryData)
+
 class MQTTError(Exception):
     pass
