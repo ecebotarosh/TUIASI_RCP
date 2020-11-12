@@ -241,7 +241,7 @@ class ConnectPacket(MQTTPacket):
             offset, self.payload['willTopic']=readCustomUTF8String(payloadHeader[self.payload['willProperties']['willLength']:])
             payloadHeader=payloadHeader[offset+self.payload['willProperties']['willLength']:]
             
-            offset, self.payload['willPayload']=readCustomUTF8String(payloadHeader)
+            offset, self.payload['willPayload']=readBinaryData(payloadHeader)
             payloadHeader=payloadHeader[offset:]
 
         if self.variable['usernameFlag']:
