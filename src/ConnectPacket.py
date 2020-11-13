@@ -272,7 +272,7 @@ if __name__ == "__main__":
     otherProps = willTopic+willPayload+username+password
     variableContents = b"\x00\x04MQTT\x05\xfe\x01\xff"
     properties = b"\x11\x00\x00\x00\x02\x21\x00\x02\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Emil")+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("bunaziua")+b"\x26"+CustomUTF8.encode(
-        "hello")+CustomUTF8.encode("Nicky")+b"\x15"+CustomUTF8.encode("userpass")+b"\x16\x00\x04\x02\x03\x04\x05"+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Andrei")
+        "hello")+CustomUTF8.encode("welcome")+b"\x15"+CustomUTF8.encode("userpass")+b"\x16\x00\x04\x02\x03\x04\x05"+b"\x26"+CustomUTF8.encode("salut")+CustomUTF8.encode("Andrei")
     propertyLength = VariableByte.encode(len(properties))
     byte_data = b"\x10"+VariableByte.encode(
         len(variableContents+propertyLength+properties+clientID+willLength+will+otherProps))
