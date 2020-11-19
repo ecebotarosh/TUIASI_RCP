@@ -281,6 +281,7 @@ if __name__ == "__main__":
         propertyLength+properties+clientID+willLength+will + otherProps
     data = struct.pack("!{}s".format(len(packetContents)), packetContents)
     packet = ConnectPacket(data)
+    print(data)
     packet.parseFixedHeader()
     packet.parseVariableHeader()
     packet.parsePayloadHeader()

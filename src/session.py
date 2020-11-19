@@ -3,21 +3,36 @@
 import struct
 from MQTTPacket import MQTTPacket
 from ConnectPacket import ConnectPacket
+from ConnackPacket import ConnackPacket
+from aux import MQTTError
 
 class Session:
-	def __init__(self, data):
+	def __init__(self):
+		self.data=b""
+
+	def registerNewData(self, data:bytes):
 		self.data=data
 
 	def classifyData(self) -> MQTTPacket:
 		fixed_part = self.data[:2]
-		byte1, byte2 = struct.unpack(">2B", fixed_part)
+		byte1, byte2 = struct.unpack("!2B", fixed_part)
 		if byte1 // 16==1:
 			if byte1 % 16 !=0:
-				print("Returning MalformedPacket")
-				return MQTTPacket(data)
+				raise MQTTError("Malformed Packet")
 			else:
 				print("Returning ConnectPacket")
-				return ConnectPacket(data)
+				return ConnectPacket(self.data)
+
+	def handleConnection(self, packet:MQTTPacket) -> MQTTPacket:
+		if isinstance(packet, ConnectPacket):
+			packet.parseFixedHeader()
+			packet.parseVariableHeader()
+			packet.parsePayloadHeader()
+			print(packet.fixed)
+			print(packet.variable)
+			print(packet.payload)
+			return ConnackPacket(ConnackPacket.generatePacketData(False, 0, {'SessionExpiryInterval':30}))
+
 		
 			
 

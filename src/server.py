@@ -11,23 +11,35 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(filename='../logs/server.log', level=logging.DEBUG)
 
+from session import Session
+from config import Config
+from aux import MQTTError
 
 class ClientThread(threading.Thread):
-    def __init__(self,clientAddress,clientsocket, *args, **kwargs):
+    def __init__(self,clientAddress,clientsocket,shared, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
         self.csocket = clientsocket
         self.clientAddress = clientAddress
-
+        self.shared = shared
         logging.info("New connection added: {}".format(clientAddress))
     def run(self):
+        sess = Session()
         logging.info("Connection from :{} ".format(clientAddress))
         msg = ''
+
         while True:
             if running:
                 r, _, _ = select.select([self.csocket], [], [], 1)
                 if r:
-                    data = self.csocket.recv(2048)
-                    msg = data.decode()
+                    data = self.csocket.recv(self.shared['config'].config['MaxPacketSize'])
+                    sess.registerNewData(data)
+                    try:
+                        packet = sess.classifyData()
+                        response = sess.handleConnection(packet)
+                        
+                    except MQTTError:
+                        msg='bye'
+
                     if msg=='bye':
                         logging.warning("Client at {} disconnected...".format(self.clientAddress))
                         self.csocket.close()
@@ -36,7 +48,7 @@ class ClientThread(threading.Thread):
                     self.csocket.close()
                     break
                 print ("from client", msg)
-                self.csocket.send(bytes(msg,'UTF-8'))
+                self.csocket.send(response.data)
             else:
                 break
         
@@ -50,12 +62,15 @@ server.bind((IP, PORT))
 print("Server started")
 print("Waiting for client request..")
 threadPool = []
+config = Config()
+shared = {}
+shared['config'] = config
 running = True
 while True:
     server.listen(1)
     try:
         clientsock, clientAddress = server.accept()
-        newthread = ClientThread(clientAddress, clientsock)
+        newthread = ClientThread(clientAddress, clientsock, shared)
         threadPool.append(newthread)
         newthread.start()
     except KeyboardInterrupt:
