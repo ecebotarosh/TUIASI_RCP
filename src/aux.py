@@ -51,6 +51,10 @@ class BinaryData:
     def __init__(self, data):
         self.data=data
         
+    @staticmethod
+    def fromBytesToBinary(data:bytes) -> bytes:
+        return struct.pack("!H", len(data))+data
+        
     def getLength(self) -> int:
         return struct.unpack("!H", self.data[:2])[0]
 
