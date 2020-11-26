@@ -9,7 +9,7 @@ class DisconnectPacket(MQTTPacket):
 	def parseVariableHeader(self)->None:
 		variableHeader=self.data[self.fixed_size:]
 
-		self.variable['disconnectReasonCode']=struct.unpack("!B",variableHeader[:1])
+		self.variable['disconnectReasonCode']=struct.unpack("!B",variableHeader[:1])[0]
 		variableHeader=variableHeader[1:]
 		if(self.fixed['remainingLength'] == 2):
 			self.variable['disconnectReasonCode'] = 0x00

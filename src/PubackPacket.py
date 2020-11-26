@@ -14,7 +14,7 @@ class PubackPacket(MQTTPacket):
 		self.variable['packetIdentifier']=(packetIdentifierMSB<<8)+packetIdentifierLSB
 		variableHeader=variableHeader[2:]
 		
-		self.variable['pubackReasonCode']=struct.unpack("!B",variableHeader[:1])
+		self.variable['pubackReasonCode']=struct.unpack("!B",variableHeader[:1])[0]
 		variableHeader=variableHeader[1:]
 
 		properties=self.data[self.fixed_size+3:]

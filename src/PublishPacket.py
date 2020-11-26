@@ -117,6 +117,11 @@ class PublishPacket(MQTTPacket):
 		if 'payloadFormatIndicator' not in self.variable['properties'].keys():
 			self.variable['properties']['payloadFormatIndicator'] = 0
 
+	def parsePayloadHeader(self):
+		offset = self.fixed_size+self.variable_size+1
+		self.payload_size = self.fixed['remainingLength']-self.variable_size
+		payloadHeader = self.data[offset:]
+
 if __name__=="__main__":
 	header=b"\x31"
 
