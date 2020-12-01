@@ -6,7 +6,7 @@ from MQTTPacket import MQTTPacket
 from aux import VariableByte, MQTTError, CustomUTF8, BinaryData, readCustomUTF8String
 
 
-class SubscribePacket(MQTTPacket):
+class UnsubscribePacket(MQTTPacket):
     def __init__(self, data):
         self.data = data
         self.fixed = {}
@@ -18,15 +18,12 @@ class SubscribePacket(MQTTPacket):
 
     def parseVariableHeader(self):
         variableHeader = self.data[self.fixed_size:]
-
-        # subscribe packed id
-        packet_id_MSB, packet_id_LSB = struct.unpack("!2b", variableHeader[:2])
-        self.variable['packet_id'] = (packet_id_MSB << 8) + packet_id_LSB
+        self.variable['packet_id'] = struct.unpack("!H", variableHeader[:2])[0]
         variableHeader = variableHeader[2:]
 
         # 2 bytes so far
 
-        properties = self.data[self.fixed_size + 2:]
+        properties = variableHeader
         num = b""
         for byte in properties:
             num += struct.pack("!B", byte)
@@ -68,29 +65,16 @@ class SubscribePacket(MQTTPacket):
         self.payload_size = self.fixed['remainingLength'] - self.variable_size
         payloadHeader = self.data[offset:]
 
-        self.payload['subscriptions'] = []
+        self.payload['unsubscriptions'] = []
         while(len(payloadHeader) != 0):
             offset, topic = readCustomUTF8String(payloadHeader)
-            subscriptionList = [topic]
             payloadHeader = payloadHeader[offset:]
-            # subscribeOptions
-            subscriptionOptions = struct.unpack("!B", payloadHeader[:1])[0]
-            reserved = subscriptionOptions & 192
-            if reserved:
-                raise MQTTError("Malformed Packet")
-            retainHandling = subscriptionOptions & 48
-            RAP = subscriptionOptions & 8
-            NL = subscriptionOptions & 4
-            QoS = subscriptionOptions & 3
-            subscriptionList.append({'retainHandling': retainHandling, 'RAP': RAP, 'NL': NL, 'QoS': QoS})
-            self.payload['subscriptions'].append(subscriptionList)
-            payloadHeader = payloadHeader[1:]
-            #self.payload['subscriptions'] este o lista de liste de 2 elemente : str si dict
+            self.payload['unsubscriptions'].append(topic)
 
 
 if __name__ == "__main__":
     # 1. fixed header
-    fixed = b"\x82"
+    fixed = b"\xa0"
 
     # 2. variable header
     packet_id = b"\x00\x10"
@@ -105,10 +89,9 @@ if __name__ == "__main__":
 
     
     # 3. payload
-    topic = CustomUTF8.encode("topic")
-    optiuni = b"\x0d"
-
-    payload = topic + optiuni
+    topic1 = CustomUTF8.encode("topic")
+    topic2 =  CustomUTF8.encode("a/b")
+    payload = topic1+topic2
 
     remainingLength = VariableByte.encode(length_of_variable_header+len(payload))
 
@@ -116,7 +99,7 @@ if __name__ == "__main__":
     data = fixed + remainingLength + variableHeader + payload
     data = struct.pack("!{}s".format(len(data)), data)
 
-    packet = SubscribePacket(data)
+    packet = UnsubscribePacket(data)
     packet.parseFixedHeader()
     packet.parseVariableHeader()
     packet.parsePayloadHeader()
