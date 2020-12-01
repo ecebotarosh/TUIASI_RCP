@@ -61,6 +61,9 @@ class ConnackPacket(MQTTPacket):
 			props += b"\x16"+BinaryData.fromBytesToBinary(properties['AuthenticationData'])
 	
 		propertyLength = VariableByte.encode(len(props))
+		#1 pentru flags si 1 pentru rc
 		remainingLength = VariableByte.encode(2+len(propertyLength)+len(props))
+		#len(propertyLength) pare stupid, dar e necesar
+		#propertyLength e format ca variable Byte si face parte din continutul pachetului.
 		data += remainingLength + flags + rc + propertyLength + props
 		return data
