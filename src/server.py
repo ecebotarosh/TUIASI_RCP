@@ -15,6 +15,21 @@ from session import Session
 from config import Config
 from aux import MQTTError
 
+
+class Watchdog:
+    def __init__(self, threads : list):
+        self.threads = threads
+
+    def purgeThreadBySocket(self, sock):
+        for connection in self.threads:
+            if connection.csocket==sock:
+                sock.close()
+                connection.join()
+                self.threads.remove(connection)
+
+
+
+
 class ClientThread(threading.Thread):
     def __init__(self,clientAddress,clientsocket,shared, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
@@ -22,6 +37,14 @@ class ClientThread(threading.Thread):
         self.clientAddress = clientAddress
         self.shared = shared
         logging.info("New connection added: {}".format(clientAddress))
+
+
+     def broadcast(self, msg):
+        for connection in self.shared['watchdog'].threads:
+            if connection.csocket != self.csocket:
+                connection.csocket.send(msg)
+
+
     def run(self):
         sess = Session()
         logging.info("Connection from :{} ".format(clientAddress))
@@ -36,6 +59,7 @@ class ClientThread(threading.Thread):
                     try:
                         packet = sess.classifyData()
                         response = sess.handleConnection(packet)
+                        self.csocket.send(response)
                         
                     except MQTTError:
                         msg='bye'
@@ -63,15 +87,17 @@ print("Server started")
 print("Waiting for client request..")
 threadPool = []
 config = Config()
+watchdog = Watchdog(threadPool)
 shared = {}
 shared['config'] = config
+shared['watchdog'] = watchdog
 running = True
 while True:
     server.listen(1)
     try:
         clientsock, clientAddress = server.accept()
         newthread = ClientThread(clientAddress, clientsock, shared)
-        threadPool.append(newthread)
+        shared['watchdog'].threads.append(newthread)
         newthread.start()
     except KeyboardInterrupt:
         running=False
