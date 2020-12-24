@@ -15,9 +15,9 @@ class PublishPacket(MQTTPacket):
 				break
 		required=len(num)
 		self.fixed['type'], self.fixed['remainingLength'] = struct.unpack("!B{}s".format(required), fixed_part+num)
-		self.fixed['DUP_flag']=(self.fixed['type'] & 8 == 8)
-		self.fixed['QoSLevel']=((self.fixed['type'] & 6)>>1 )
-		if self.fixed['QoSLevel']==3:
+		self.fixed['DUP']=(self.fixed['type'] & 8 == 8)
+		self.fixed['QoS']=((self.fixed['type'] & 6)>>1 )
+		if self.fixed['QoS']>2:
 			raise MQTTError("Malformed Packet : QoSLevel '11' reserved – must not be used ")
 		self.fixed['retain']=(self.fixed['type'] & 1 == 1)
 		self.fixed['type']>>=4
@@ -28,10 +28,11 @@ class PublishPacket(MQTTPacket):
 		variableHeader=self.data[self.fixed_size:]
 		offset,self.variable['topicName']=readCustomUTF8String(variableHeader)
 		variableHeader=variableHeader[2+offset:]
-		self.variable['packetIdentifier']=struct.unpack("!H",variableHeader[:2])
-		variableHeader=variableHeader[2:]
-		# 7 bytes is the common variable header, without properties
-		properties=self.data[4+self.variable['length']+self.fixed_size:]
+		if self.fixed['QoS']!=0:
+			self.variable['packetIdentifier']=struct.unpack("!H",variableHeader[:2])
+			variableHeader=variableHeader[2:]
+
+		properties = variableHeader
 		#variable byte integer
 		num = b""
 		for byte in properties:
@@ -43,8 +44,8 @@ class PublishPacket(MQTTPacket):
 		self.variable['propertyLength'] = VariableByte.decode(self.variable['propertyLength'])
 		self.variable['properties']={}
 		self.variable['properties']['userProperty']={}
-		self.variable_size=self.variable['propertyLength']+self.variable['length']+4+required
-		properties=properties[required:]
+		#self.variable_size=self.variable['propertyLength']+self.variable['length']+4+required
+		properties=properties[required:] #incepem dupa propertyLength
 		i=0
 		while i<self.variable['propertyLength']:
 			if properties[i]==0x01:
@@ -64,8 +65,6 @@ class PublishPacket(MQTTPacket):
 					self.variable['properties']['topicAlias']=struct.unpack("!H",properties[i+1:i+3])[0]
 					if self.variable['properties']['topicAlias']==0:
 						raise MQTTError("Malformed Packet : topicAlias it doesn't to be 0")
-					# 0< topicAlias <=valMax din ConnackPacket
-					#i+=2
 				else:
 					raise MQTTError("Malformed Packet : topicAlias already exists")
 				i+=2
@@ -120,6 +119,7 @@ class PublishPacket(MQTTPacket):
 		payloadHeader = self.data[offset:]
 		self.payload['data']=payloadHeader
 
+
 if __name__=="__main__":
 	header=b"\x31"
 
@@ -148,3 +148,5 @@ if __name__=="__main__":
 	packet.parseVariableHeader()
 	print(packet.fixed)
 	print(packet.variable)
+
+
