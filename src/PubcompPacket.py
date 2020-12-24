@@ -18,9 +18,8 @@ class PubcompPacket(MQTTPacket):
 		variableHeader = self.data[self.fixed_size:]
 
 		#pubcomp packed id
-		packet_id_MSB, packet_id_LSB =  struct.unpack("!2b", variableHeader[:2])
+		packet_id_MSB, packet_id_LSB =  struct.unpack("!2B", variableHeader[:2])
 		self.variable['packet_id'] = (packet_id_MSB << 8) + packet_id_LSB
-		print('packet_id: ' + str(self.variable['packet_id']))
 		variableHeader = variableHeader[2:]
 
 		#pubcomp reason code
@@ -28,7 +27,6 @@ class PubcompPacket(MQTTPacket):
 		self.variable['pubcomp_reason_code'] = pubcomp_reason_code
 		if(self.fixed['remainingLength'] == 2):
 			self.variable['pubcomp_reason_code'] = 0x00
-		print('pubcomp_reason_code: ' + str(self.variable['pubcomp_reason_code']))
 		variableHeader = variableHeader[1:]
 		
 		#properties can be omitted if the reason code is Success
@@ -86,6 +84,24 @@ class PubcompPacket(MQTTPacket):
 						i = i + 4 + len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
 				i = i + 1
 
+	def generatePacketData(packetID : int, reasonCode : int, reasonString : str, userProperties : dict) -> bytes:
+		"""
+		userProperties e un dictionar cu cheie string si valori de tip lista de string
+		"""
+		fixed = b"\x70"
+		packet_id = struct.pack("!H", packetID)
+		variable = packet_id + struct.pack("!B", reasonCode)
+		properties = b"\x1f"+CustomUTF8.encode(reasonString)
+		for key in userProperties.keys():
+			for value in userProperties[key]:
+				properties+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
+		propertyLength = VariableByte.encode(len(properties))
+		variable += propertyLength
+		variable += properties
+		remainingLength = VariableByte.encode(len(variable))
+		fixed+=remainingLength
+		return fixed+variable
+
 
 
 if __name__=="__main__" :
@@ -115,4 +131,11 @@ if __name__=="__main__" :
 	packet.parseFixedHeader()
 	packet.parseVariableHeader()
 	print(packet.fixed)
+	print(packet.variable)
+
+	customData = PubcompPacket.generatePacketData(771, 0x92, "RCP-MQTT-SERVER", {"Friday":["Monday"]})
+	customPacket = PubcompPacket(customData)
+	customPacket.parseFixedHeader()
+	customPacket.parseVariableHeader()
+	print(customPacket.fixed)
 	print(packet.variable)
