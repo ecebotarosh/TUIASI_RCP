@@ -20,7 +20,6 @@ class PubrecPacket(MQTTPacket):
 		#pubrec packed id
 		packet_id_MSB, packet_id_LSB =  struct.unpack("!2b", variableHeader[:2])
 		self.variable['packet_id'] = (packet_id_MSB << 8) + packet_id_LSB
-		print('packet_id: ' + str(self.variable['packet_id']))
 		variableHeader = variableHeader[2:]
 
 		#pubrec reason code
@@ -94,6 +93,21 @@ class PubrecPacket(MQTTPacket):
 						self.variable['properties']['userProperty'][CustomUTF8.decode(str1)].append(CustomUTF8.decode(str2))
 						i += 4+len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
 				i = i + 1
+
+	@staticmethod
+	def generatePacketData(packetID : int, reasonCode : int, reasonString : str, userProperties : list) -> bytes:
+		fixed = b"\x50"
+		packet_id = struct.pack("!H", packetID)
+		variable = packet_id + struct.pack("!B", reasonCode)
+		properties = b"\x1f"+CustomUTF8.encode(reasonString)
+		for userProperty in userProperties:
+			properties+=b"\x26"+CustomUTF8.encode(userProperty)
+		propertyLength = VariableByte.encode(len(properties))
+		variable += propertyLength
+		variable += properties
+		remainingLength = VariableByte.encode(len(variable))
+		fixed+=remainingLength
+		return fixed+variable
 
 
 
