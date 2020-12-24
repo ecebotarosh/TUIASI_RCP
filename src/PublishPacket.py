@@ -26,12 +26,9 @@ class PublishPacket(MQTTPacket):
 
 	def parseVariableHeader(self)->None:
 		variableHeader=self.data[self.fixed_size:]
-		offset,self.variable['name']=readCustomUTF8String(variableHeader)
-		self.variable['length']=offset-2
-		variableHeader=variableHeader[2+self.variable['length']:]
-		packet_identifier_msb,packet_identifier_lsb=struct.unpack("!2B",variableHeader[:2])
-		packet_identifier=(packet_identifier_msb<<8 )+ packet_identifier_lsb
-		self.variable['packetIdentifier']=packet_identifier
+		offset,self.variable['topicName']=readCustomUTF8String(variableHeader)
+		variableHeader=variableHeader[2+offset:]
+		self.variable['packetIdentifier']=struct.unpack("!H",variableHeader[:2])
 		variableHeader=variableHeader[2:]
 		# 7 bytes is the common variable header, without properties
 		properties=self.data[4+self.variable['length']+self.fixed_size:]
@@ -56,13 +53,13 @@ class PublishPacket(MQTTPacket):
 				else:
 					raise MQTTError("Malformed Packet : payloadFormatIndicator already exists")
 				i += 1
-			if properties[i]==0x02:
+			elif properties[i]==0x02:
 				if 'messageExpiryInterval' not in self.variable['properties'].keys():
 					self.variable['properties']['messageExpiryInterval']=struct.unpack("!I",properties[i+1:i+5])[0]
 				else:
 					raise MQTTError("Malformed Packet : messageExpiryInterval already exists")
 				i+=4
-			if properties[i]==0x23:
+			elif properties[i]==0x23:
 				if 'topicAlias' not in self.variable['properties'].keys():
 					self.variable['properties']['topicAlias']=struct.unpack("!H",properties[i+1:i+3])[0]
 					if self.variable['properties']['topicAlias']==0:
@@ -72,14 +69,14 @@ class PublishPacket(MQTTPacket):
 				else:
 					raise MQTTError("Malformed Packet : topicAlias already exists")
 				i+=2
-			if properties[i]==0x08:
+			elif properties[i]==0x08:
 				offset1,str1=readCustomUTF8String(properties[i+1:])
 				if 'responseTopic' not in self.variable['properties'].keys():	
 					self.variable['properties']['responseTopic'] = str1
 				else:
 					raise MQTTError("Malformed Packet : responseTopic already exists")
 				i += offset1
-			if properties[i]==0x09:
+			elif properties[i]==0x09:
 				if 'correlationData' not in self.variable['properties'].keys():
 					offset1,data1=readBinaryData(properties[i+1:])
 					self.variable['properties']['correlationData']=data1
@@ -87,7 +84,7 @@ class PublishPacket(MQTTPacket):
 				else:
 					raise MQTTError("Malformed Packet : correlationData already exists")
 				
-			if properties[i] == 0x26:
+			elif properties[i] == 0x26:
 				offset1,str1=readCustomUTF8String(properties[i+1:])
 				offset2,str2=readCustomUTF8String(properties[i+1+offset1:])
 				if str1 not in self.variable['properties']['userProperty'].keys():
@@ -95,7 +92,7 @@ class PublishPacket(MQTTPacket):
 				else:
 					self.variable['properties']['userProperty'][str1].append(str2)
 				i += offset1+offset2
-			if properties[i]==0x0B:
+			elif properties[i]==0x0B:
 				buff=properties[i+1:]
 				num = b""
 				for byte in buff:
@@ -105,7 +102,7 @@ class PublishPacket(MQTTPacket):
 				if 'subscriptionIdentifier' not in self.variable['properties'].keys():
 					self.variable['properties']['subscriptionIdentifier'] = VariableByte.decode(num)
 				i+=len(num)
-			if properties[i]==0x03:
+			elif properties[i]==0x03:
 				offset1,str1=readCustomUTF8String(properties[i+1:])
 				if 'contentType' not in self.variable['properties'].keys():	
 					self.variable['properties']['contentType'] = str1
@@ -121,6 +118,7 @@ class PublishPacket(MQTTPacket):
 		offset = self.fixed_size+self.variable_size+1
 		self.payload_size = self.fixed['remainingLength']-self.variable_size
 		payloadHeader = self.data[offset:]
+		self.payload['data']=payloadHeader
 
 if __name__=="__main__":
 	header=b"\x31"

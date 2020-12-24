@@ -180,7 +180,7 @@ class ConnectPacket(MQTTPacket):
                         raise MQTTError(
                             "Malformed Packet : willDelay already exists")
                     i += 4
-                if payloadHeader[i] == 0x01:
+                elif payloadHeader[i] == 0x01:
                     if 'payloadFormatIndicator' not in self.payload['willProperties'].keys():
                         self.payload['willProperties']['payloadFormatIndicator'] = struct.unpack(
                             "!B", payloadHeader[i+1:i+2])[0]
@@ -190,7 +190,7 @@ class ConnectPacket(MQTTPacket):
                         raise MQTTError(
                             "Malformed Packet : payloadFormatIndicator already exists")
                     i += 1
-                if payloadHeader[i] == 0x02:
+                elif payloadHeader[i] == 0x02:
                     if 'messageExpiryInterval' not in self.payload['willProperties'].keys():
                         self.payload['willProperties']['messageExpiryInterval'] = (
                             True, struct.unpack("!I", payloadHeader[i+1:i+5])[0])
@@ -199,28 +199,28 @@ class ConnectPacket(MQTTPacket):
                             "Malformed Packet : messageExpiryInterval already exists")
                     i += 4
                     
-                if payloadHeader[i] == 0x03:
+                elif payloadHeader[i] == 0x03:
                     if 'contentType' not in self.payload['willProperties'].keys():
                         offset, self.payload['willProperties']['contentType'] = readCustomUTF8String(payloadHeader[i+1:])
                     else:
                         raise MQTTError(
                             "Malformed Packet : contentType already exists")
                     i += offset
-                if payloadHeader[i] == 0x08:
+                elif payloadHeader[i] == 0x08:
                     if 'responseTopic' not in self.payload['willProperties'].keys():
                         offset, self.payload['willProperties']['responseTopic'] = readCustomUTF8String(payloadHeader[i+1:])
                     else:
                         raise MQTTError(
                             "Malformed Packet : responseTopic already exists")
                     i += offset
-                if payloadHeader[i] == 0x09:
+                elif payloadHeader[i] == 0x09:
                     if 'correlationData' not in self.payload['willProperties'].keys():
                         length = struct.unpack("!H", payloadHeader[i+1:i+3])[0]
                         self.payload['willProperties']['correlationData'] = payloadHeader[i+1:i+3+length]
                     else:
                         raise MQTTError("Malformed Packet : correlationData already exists")
                     i += 2+length
-                if payloadHeader[i] == 0x26:
+                elif payloadHeader[i] == 0x26:
                     offset1, str1 = readCustomUTF8String(payloadHeader[i+1:])
                     offset2, str2 = readCustomUTF8String(payloadHeader[i+1+offset1:])
                     if str1 not in self.payload['willProperties']['userProperty'].keys():
