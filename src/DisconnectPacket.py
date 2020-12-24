@@ -61,17 +61,39 @@ class DisconnectPacket(MQTTPacket):
 				i+=offset1
 			i+=1
 
+	@staticmethod
+	def generatePacketData(reasonCode : int, reasonString:str, properties:dict) -> bytes:
+		fixed = b"\xe0"
+		variable = struct.pack("!B", reasonCode)
+		keys = list(properties.keys())
+		props = b"\x1f"+CustomUTF8.encode(reasonString)
+		for key in keys:
+			#session expiry interval nu poate fi generat de server (din documentatie)
+			if key=="UserProperty":
+				for userProperty in properties[key].keys():
+					for userValue in properties[key][userProperty]:
+						props+=b"\x26"+CustomUTF8.encode(userProperty)+CustomUTF8.encode(userValue)
+			elif key=="ServerReference":
+				props+=b"\x1c"+CustomUTF8.encode(properties[key])
+		proplen = VariableByte.encode(len(props))
+		variable += (proplen+props)
+		remainingLength = VariableByte.encode(len(variable))
+		fixed+=remainingLength
+		return fixed+variable
+
+
 
 if __name__=="__main__":
 
 	fixed=b"\xe0"
 
 	reason_code=b"\x81"
-	session_expiry=b"\x11"+struct.pack("!I",128)
+	#session_expiry=b"\x11"+struct.pack("!I",128)
 	reason_string=b"\x1f"+CustomUTF8.encode("reason for disconnect")
 	userProperty=b"\x26"+CustomUTF8.encode("user1")+CustomUTF8.encode("checkout main")+b"\x26"+CustomUTF8.encode("user2")+CustomUTF8.encode("add commit")
 	server_reference=b"\x1c"+CustomUTF8.encode("serverReference for Client")
-	properties=session_expiry+reason_string+userProperty+server_reference
+	#properties=session_expiry+reason_string+userProperty+server_reference
+	properties=reason_string+userProperty+server_reference
 
 	property_length=VariableByte.encode(len(properties))
 	variableHeader=reason_code+property_length+properties
@@ -84,5 +106,12 @@ if __name__=="__main__":
 	packet=DisconnectPacket(data)
 	packet.parseFixedHeader()
 	packet.parseVariableHeader()
+	print(packet.fixed)
+	print(packet.variable)
+
+	customData = DisconnectPacket.generatePacketData(0x81, "reason for disconnect", {"UserProperty":{"user1":["checkout main"], "user2":["add commit"]}, "ServerReference":"serverReference for Client"})
+	customPacket = DisconnectPacket(customData)
+	customPacket.parseFixedHeader()
+	customPacket.parseVariableHeader()
 	print(packet.fixed)
 	print(packet.variable)
