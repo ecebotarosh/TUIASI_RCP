@@ -24,24 +24,23 @@ class UnsubackPacket(MQTTPacket):
 		self.variable['propertyLength']=struct.unpack("!{}s".format(required),num)[0]
 		self.variable['propertyLength']=VariableByte.decode(self.variable['propertyLength'])
 		self.variable['properties']={}
-		self.variable['properties']['reasonCode']=[]
 		self.variable['properties']['userProperty']={}
 		self.variable_size=self.variable['propertyLength']+2
 		properties=properties[required:]
 
 		i = 0
 		while i<self.variable['propertyLength']:
-			# if properties[i]==0x1F:
-			# 	offset1,str1=readCustomUTF8String(properties[i+1:])
-			# 	if 'reasonString' not in self.variable['properties'].keys():	
-			# 		self.variable['properties']['reasonString'] = str1
-			# 	else:
-			# 		raise MQTTError("Malformed Packet : responseTopic already exists")
-			# 	i += offset1
 			if properties[i]==0x1F:
 				offset1,str1=readCustomUTF8String(properties[i+1:])
-				self.variable['properties']['reasonCode'].append(str1)
-				i+=offset1
+				if 'reasonString' not in self.variable['properties'].keys():	
+					self.variable['properties']['reasonString'] = str1
+				else:
+					raise MQTTError("Malformed Packet : reasonString already exists")
+				i += offset1
+			# if properties[i]==0x1F:
+			# 	offset1,str1=readCustomUTF8String(properties[i+1:])
+			# 	self.variable['properties']['reasonCode'].append(str1)
+			# 	i+=offset1
 			
 			if properties[i] == 0x26:
 				offset1,str1=readCustomUTF8String(properties[i+1:])
@@ -62,13 +61,36 @@ class UnsubackPacket(MQTTPacket):
 			data=struct.unpack("!B",payloadHeader[:1])[0]
 			self.payload['reasonCode'].append(data)
 			payloadHeader=payloadHeader[1:]
+
+	@staticmethod
+	def generatePacketData(packetID: int, reasonString:str, userProperties:dict, payload:list) -> bytes:
+		fixed = b"\x90"
+		#TODO : add remaining length
+		
+		variable = struct.pack("!H", packetID)
+		props = b"\x1F"+CustomUTF8.encode(reasonString)
+		for key in userProperties.keys():
+				for value in userProperties[key]:
+					props+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
+		variable+=VariableByte.encode(len(props))+props
+
+		remainingLength = VariableByte.encode(len(variable))
+		fixed+=remainingLength
+
+		payload_data = b""
+
+		for response_reason_code in payload:
+			payload_data += struct.pack("!B", response_reason_code)
+
+		return fixed+variable+payload_data
+
 			
 if __name__=="__main__":
 	
 	fixed=b"\xb0"
 	packetId=b"\x00\x11"
 
-	reason_string=b"\x1f"+CustomUTF8.encode("reasonString:::data")+b"\x1f"+CustomUTF8.encode("reasonString:::data1")
+	reason_string=b"\x1f"+CustomUTF8.encode("reasonString:::data")
 	userProperty=b"\x26"+CustomUTF8.encode("user1")+CustomUTF8.encode("checkout main")+b"\x26"+CustomUTF8.encode("user2")+CustomUTF8.encode("add commit")
 	properties=reason_string+userProperty
 
@@ -87,3 +109,13 @@ if __name__=="__main__":
 	print(packet.fixed)
 	print(packet.variable)
 	print(packet.payload)
+
+
+	customData = UnsubackPacket.generatePacketData(17, "reasonString:::data", {"user1":["checkout main"], "user2":["add commit"]}, [0, 16])
+	customPacket = UnsubackPacket(customData)
+	customPacket.parseFixedHeader()
+	customPacket.parseVariableHeader()
+	customPacket.parsePayloadHeader()
+	print(customPacket.fixed)
+	print(customPacket.variable)
+	print(customPacket.payload)
