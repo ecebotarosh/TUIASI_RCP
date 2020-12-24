@@ -15,21 +15,16 @@ class SubackPacket(MQTTPacket):
 		self.payload_size=0
 
 	@staticmethod
-	def generatePacketData(packetID: int, properties:dict, payload:list) -> bytes:
+	def generatePacketData(packetID: int, reasonString:str, userProperties:dict, payload:list) -> bytes:
 		fixed = b"\x90"
 		#TODO : add remaining length
 		
 		variable = struct.pack("!H", packetID)
-		props = b""
-		myProperties = properties.keys()
-		if 'ReasonString' in myProperties:
-			props += b"\x1F"+CustomUTF8.encode(properties['ReasonString'])
-			myProperties.remove('ReasonString')
-		if 'UserProperty' in myProperties:
-			for key in properties['UserProperty'].keys():
-				for value in properties['UserProperty'][key]:
-					props+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
-			myProperties.remove('UserProperty')
+		props = b"\x1F"+CustomUTF8.encode(reasonString)
+			
+		for key in userProperties.keys():
+			for value in userProperties[key]:
+				props+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
 		variable+=VariableByte.encode(len(props))+props
 
 		remainingLength = VariableByte.encode(len(variable))
