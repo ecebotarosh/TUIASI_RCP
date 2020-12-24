@@ -22,8 +22,7 @@ class DisconnectPacket(MQTTPacket):
 				break
 		required=len(num)
 		
-		self.variable['propertyLength']=struct.unpack("!{}s".format(required),num)[0]
-		self.variable['propertyLength']=VariableByte.decode(self.variable['propertyLength'])
+		self.variable['propertyLength']=VariableByte.decode(struct.unpack("!{}s".format(required),num)[0])
 		self.variable['properties']={}
 		self.variable['properties']['userProperty']={}
 		self.variable_size=self.variable['propertyLength']+1
