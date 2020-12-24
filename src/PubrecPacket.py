@@ -27,7 +27,6 @@ class PubrecPacket(MQTTPacket):
 		self.variable['pubrec_reason_code'] = pubrec_reason_code
 		if(self.fixed['remainingLength'] == 2):
 			self.variable['pubrec_reason_code'] = 0x00
-		print('pubrec_reason_code: ' + str(self.variable['pubrec_reason_code']))
 		variableHeader = variableHeader[1:]
 		
 		#properties can be omitted if the reason code is Success
@@ -95,13 +94,17 @@ class PubrecPacket(MQTTPacket):
 				i = i + 1
 
 	@staticmethod
-	def generatePacketData(packetID : int, reasonCode : int, reasonString : str, userProperties : list) -> bytes:
+	def generatePacketData(packetID : int, reasonCode : int, reasonString : str, userProperties : dict) -> bytes:
+		"""
+		userProperties e un dictionar cu cheie string si valori de tip lista de string
+		"""
 		fixed = b"\x50"
 		packet_id = struct.pack("!H", packetID)
 		variable = packet_id + struct.pack("!B", reasonCode)
 		properties = b"\x1f"+CustomUTF8.encode(reasonString)
-		for userProperty in userProperties:
-			properties+=b"\x26"+CustomUTF8.encode(userProperty)
+		for key in userProperties.keys():
+			for value in userProperties[key]:
+				properties+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
 		propertyLength = VariableByte.encode(len(properties))
 		variable += propertyLength
 		variable += properties
@@ -140,3 +143,12 @@ if __name__=="__main__" :
 	packet.parseVariableHeader()
 	print(packet.fixed)
 	print(packet.variable)
+
+	
+
+	customData = PubrecPacket.generatePacketData(1282, 131, "$sys/rcp", {"Munteanu_Letitia":["Ioana"]})
+	customPacket = PubrecPacket(customData)
+	customPacket.parseFixedHeader()
+	customPacket.parseVariableHeader()
+	print(customPacket.fixed)
+	print(customPacket.variable)
