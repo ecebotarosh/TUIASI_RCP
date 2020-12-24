@@ -89,11 +89,29 @@ class PubrelPacket(MQTTPacket):
 						i += 4+len(CustomUTF8.decode(str1))+len(CustomUTF8.decode(str2))
 				i = i + 1
 
+	@staticmethod
+	def generatePacketData(packetID : int, reasonCode : int, reasonString : str, userProperties : dict) -> bytes:
+		"""
+		userProperties e un dictionar cu cheie string si valori de tip lista de string
+		"""
+		fixed = b"\x60"
+		packet_id = struct.pack("!H", packetID)
+		variable = packet_id + struct.pack("!B", reasonCode)
+		properties = b"\x1f"+CustomUTF8.encode(reasonString)
+		for key in userProperties.keys():
+			for value in userProperties[key]:
+				properties+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
+		propertyLength = VariableByte.encode(len(properties))
+		variable += propertyLength
+		variable += properties
+		remainingLength = VariableByte.encode(len(variable))
+		fixed+=remainingLength
+		return fixed+variable
 
 
 if __name__=="__main__" :
 	#fixed header
-	fixed = b"\x62"
+	fixed = b"\x60"
 	
 	#variable header
 	packet_id = b"\x04\x01"
@@ -119,3 +137,10 @@ if __name__=="__main__" :
 	packet.parseVariableHeader()
 	print(packet.fixed)
 	print(packet.variable)
+
+	customData = PubrelPacket.generatePacketData(1025, 146, "Panda is a cat", {"I am mother of 15 cats":["and 10 dogs"]})
+	customPacket = PubrelPacket(customData)
+	customPacket.parseFixedHeader()
+	customPacket.parseVariableHeader()
+	print(customPacket.fixed)
+	print(customPacket.variable)
