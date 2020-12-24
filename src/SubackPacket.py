@@ -15,11 +15,11 @@ class SubackPacket(MQTTPacket):
 		self.payload_size=0
 
 	@staticmethod
-	def generatePacketData(reason_code: int, properties:dict, payload:list) -> bytes:
+	def generatePacketData(packetID: int, properties:dict, payload:list) -> bytes:
 		fixed = b"\x90"
 		#TODO : add remaining length
 		
-		variable = struct.pack("!H", reason_code)
+		variable = struct.pack("!H", packetID)
 		props = b""
 		myProperties = properties.keys()
 		if 'ReasonString' in myProperties:
