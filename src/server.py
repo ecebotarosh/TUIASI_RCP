@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from aux import MQTTError
+from config import Config
+from session import Session
 import socket
 import threading
 import logging
@@ -11,27 +14,21 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(filename='../logs/server.log', level=logging.DEBUG)
 
-from session import Session
-from config import Config
-from aux import MQTTError
-
 
 class Watchdog:
-    def __init__(self, threads : list):
+    def __init__(self, threads: list):
         self.threads = threads
 
     def purgeThreadBySocket(self, sock):
         for connection in self.threads:
-            if connection.csocket==sock:
+            if connection.csocket == sock:
                 sock.close()
                 connection.join()
                 self.threads.remove(connection)
 
 
-
-
 class ClientThread(threading.Thread):
-    def __init__(self,clientAddress,clientsocket,shared, *args, **kwargs):
+    def __init__(self, clientAddress, clientsocket, shared, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
         self.csocket = clientsocket
         self.clientAddress = clientAddress
@@ -39,7 +36,7 @@ class ClientThread(threading.Thread):
         logging.info("New connection added: {}".format(clientAddress))
 
 
-     def broadcast(self, msg):
+    def broadcast(self, msg):
         for connection in self.shared['watchdog'].threads:
             if connection.csocket != self.csocket:
                 connection.csocket.send(msg)
@@ -59,7 +56,7 @@ class ClientThread(threading.Thread):
                     try:
                         packet = sess.classifyData()
                         response = sess.handleConnection(packet)
-                        self.csocket.send(response)
+                        self.csocket.send(response.data)
                         
                     except MQTTError:
                         msg='bye'
