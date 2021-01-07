@@ -31,7 +31,9 @@ class ConnectPacket(MQTTPacket):
         self.variable['willQoS'] = connectFlags & 24  # 16+8
         self.variable['willFlag'] = (connectFlags & 4 == 4)
         self.variable['cleanStart'] = (connectFlags & 2 == 2)
-        self.variable['reserved'] = (connectFlags & 1 == 1)
+        reserved = (connectFlags & 1 == 1)
+        if reserved:
+            raise MQTTError("Not reserved")
         variableHeader = variableHeader[1:]
         keep_alive_msb, keep_alive_lsb = struct.unpack(
             "!2B", variableHeader[:2])
