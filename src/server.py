@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from aux import MQTTError
+from ConnackPacket import ConnackPacket
 from config import Config
 from session import Session
 import socket
@@ -33,6 +34,7 @@ class ClientThread(threading.Thread):
         self.csocket = clientsocket
         self.clientAddress = clientAddress
         self.shared = shared
+        self.sess = Session()
         logging.info("New connection added: {}".format(clientAddress))
 
 
@@ -43,7 +45,6 @@ class ClientThread(threading.Thread):
 
 
     def run(self):
-        sess = Session()
         logging.info("Connection from :{} ".format(clientAddress))
         msg = ''
 
@@ -57,7 +58,7 @@ class ClientThread(threading.Thread):
                         packet = sess.classifyData()
                         response = sess.handleConnection(packet)
                         self.csocket.send(response.data)
-                        
+                        print("I just sent him everything I could") 
                     except MQTTError:
                         msg='bye'
 
