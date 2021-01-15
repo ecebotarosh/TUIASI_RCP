@@ -26,9 +26,7 @@ class Session:
         self.data = data
 
     def classifyData(self) -> MQTTPacket:
-        fixed_part = self.data[0]
-        _type = struct.unpack("!B", fixed_part)
-        ptype = _type // 16
+        ptype = self.data[0] // 16
         if ptype == 1:
             print("Returning ConnectPacket")
             return ConnectPacket(self.data)
@@ -73,12 +71,12 @@ class Session:
             print(packet.fixed)
             print(packet.variable)
             print(packet.payload)
-            if packet.fixed['cleanStart']:
+            if packet.variable['cleanStart']:
                 self.reset()
             #if not self.config['AllowPublicAccess']:
             #    if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
             #       if authen
-            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x80, {'SessionExpiryInterval': 30}))
+            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 30}))
 
 
 if __name__ == "__main__":

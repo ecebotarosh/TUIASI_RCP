@@ -53,10 +53,10 @@ class ClientThread(threading.Thread):
                 r, _, _ = select.select([self.csocket], [], [], 1)
                 if r:
                     data = self.csocket.recv(self.shared['config'].config['MaxPacketSize'])
-                    sess.registerNewData(data)
+                    self.sess.registerNewData(data)
                     try:
-                        packet = sess.classifyData()
-                        response = sess.handleConnection(packet)
+                        packet = self.sess.classifyData()
+                        response = self.sess.handleConnection(packet)
                         self.csocket.send(response.data)
                         print("I just sent him everything I could") 
                     except MQTTError:
