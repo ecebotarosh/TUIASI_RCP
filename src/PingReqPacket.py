@@ -17,6 +17,10 @@ class PingReqPacket(MQTTPacket):
 		self.fixed['type'], self.fixed['remainingLength'] = struct.unpack("!B{}s".format(required), fixed_part+num)
 		self.fixed['type']>>=4
 
+        def parse(self):
+            self.parseFixedHeader()
+
+
 if __name__=="__main__":
 	
 	fixed=b"\xc0"

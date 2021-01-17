@@ -17,6 +17,9 @@ class PingResPacket(MQTTPacket):
 		self.fixed['type'], self.fixed['remainingLength'] = struct.unpack("!B{}s".format(required), fixed_part+num)
 		self.fixed['type']>>=4
 		self.fixed['remainingLength']=VariableByte.decode(self.fixed['remainingLength'])
+        
+        def parse(self) -> None:
+            self.parseFixedHeader()
 
 	@staticmethod
 	def generatePacketData():

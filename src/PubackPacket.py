@@ -101,6 +101,11 @@ class PubackPacket(MQTTPacket):
 		data += remainingLength + flags + rc + propertyLength + props
 		return data
 
+        def parse(self) -> None:
+            self.parseFixedHeader()
+            self.parseVariableHeader()
+
+
 if __name__=="__main__":
 	#fixed header
 	fixed=b"\x40"

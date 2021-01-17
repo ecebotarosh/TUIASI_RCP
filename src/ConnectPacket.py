@@ -254,6 +254,11 @@ class ConnectPacket(MQTTPacket):
             offset, self.payload['password']=readBinaryData(payloadHeader)
             payloadHeader=payloadHeader[offset:]
 
+    def parse(self) -> None:
+        self.parseFixedHeader()
+        self.parseVariableHeader()
+        self.parsePayloadHeader()
+    
 
 if __name__ == "__main__":
 

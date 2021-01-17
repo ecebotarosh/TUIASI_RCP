@@ -33,4 +33,5 @@ class MQTTPacket:
 	def parsePayloadHeader(self):
 		pass		
 
-
+        def parse(self):
+            pass

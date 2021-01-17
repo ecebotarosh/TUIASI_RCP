@@ -70,7 +70,11 @@ class UnsubscribePacket(MQTTPacket):
             offset, topic = readCustomUTF8String(payloadHeader)
             payloadHeader = payloadHeader[offset:]
             self.payload['unsubscriptions'].append(topic)
-
+        
+    def parse(self):
+        self.parseFixedHeader()
+        self.parseVariableHeader()
+        self.parsePayloadHeader()
 
 if __name__ == "__main__":
     # 1. fixed header

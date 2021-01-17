@@ -65,7 +65,6 @@ class UnsubackPacket(MQTTPacket):
 	@staticmethod
 	def generatePacketData(packetID: int, reasonString:str, userProperties:dict, payload:list) -> bytes:
 		fixed = b"\x90"
-		#TODO : add remaining length
 		
 		variable = struct.pack("!H", packetID)
 		props = b"\x1F"+CustomUTF8.encode(reasonString)
@@ -84,6 +83,10 @@ class UnsubackPacket(MQTTPacket):
 
 		return fixed+variable+payload_data
 
+        def parse(self) -> None:
+            self.parseFixedHeader()
+            self.parseVariableHeader()
+            self.parsePayloadHeader()
 			
 if __name__=="__main__":
 	

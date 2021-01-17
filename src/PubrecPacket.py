@@ -112,7 +112,9 @@ class PubrecPacket(MQTTPacket):
 		fixed+=remainingLength
 		return fixed+variable
 
-
+        def parse(self) -> None:
+            self.parseFixedHeader()
+            self.parseVariableHeader()
 
 if __name__=="__main__" :
 	#fixed header

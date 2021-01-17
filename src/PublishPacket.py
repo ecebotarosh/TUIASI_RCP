@@ -119,6 +119,11 @@ class PublishPacket(MQTTPacket):
 		payloadHeader = self.data[offset:]
 		self.payload['data']=payloadHeader
 
+        def parse(self):
+            self.parseFixedHeader()
+            self.parseVariableHeader()
+            self.parsePayloadHeader()
+
 
 if __name__=="__main__":
 	header=b"\x31"
