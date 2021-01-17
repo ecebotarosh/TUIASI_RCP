@@ -58,40 +58,62 @@ class PubackPacket(MQTTPacket):
 		props = b""
 		if 'SessionExpiryInterval' in properties.keys():
 			props += b"\x11"+struct.pack("!I", properties['SessionExpiryInterval'])
+                        properties.pop('SessionExpiryInterval')
 		if 'ReceiveMaximum' in properties.keys():
 			props += b"\x21"+struct.pack("!H", properties['ReceiveMaximum'])
+                        properties.pop('ReceiveMaximum')
+
 		if 'MaximumQoS' in properties.keys():
 			props += b"\x24"+struct.pack("!B", properties['MaximumQoS'])
+                        properties.pop('MaximumQoS')
 		if 'RetainAvailable' in properties.keys():
 			props += b"\x25"+struct.pack("!B", properties['RetainAvailable'])
+                        properties.pop('RetainAvailable')
+
 		if 'MaximumPacketSize' in properties.keys():
 			props += b"\x27"+struct.pack("!I". properties['MaximumPacketSize'])
-		if 'AssignedClientId' in properties.keys():
-			props += b"\x12"+CustomUTF8.encode(properties['AssignedClientId'])
+                        properties.pop('MaximumPacketSize')
+ 
 		if 'TopicAliasMaximum' in properties.keys():
 			props += b"\x22"+struct.pack("!H". properties['TopicAliasMaximum'])
+                        properties.pop('TopicAliasMaximum')
 		if 'ReasonString' in properties.keys():
 			props += b"\x1F"+CustomUTF8.encode(properties['ReasonString'])
+                        properties.pop('ReasonString')
+
 		if 'UserProperty' in properties.keys():
 			for key in properties['UserProperty'].keys():
 				for value in properties['UserProperty'][key]:
 					props+=b"\x26"+CustomUTF8.encode(key)+CustomUTF8.encode(value)
+                                        properties['UserProperty'].pop(key)
 		if 'WildcardSubscriptionAvailable' in properties.keys():
 			props += b"\x28"+struct.pack("!B", properties['WildcardSubscriptionAvailable'])
+                        properties.pop('WildcardSubscriptionAvailable')
 		if 'SubscriptionIdentifiersAvailable' in properties.keys():
 			props += b"\x29"+struct.pack("!B", properties['SubscriptionIdentifiersAvailable'])
+                        properties.pop('SubscriptionIdentifiersAvailable')
+
 		if 'SharedSubscriptionAvailable' in properties.keys():
 			props += b"\x2A"+struct.pack("!B", properties['SharedSubscriptionAvailable'])
+                        properties.pop('SharedSubscriptionAvailable')
+
 		if 'ServerKeepAlive' in properties.keys():
 			props += b"\x13"+struct.pack("!H", properties['ServerKeepAlive'])
+                        properties.pop('ServerKeepAlive')
 		if 'ResponseInformation' in properties.keys():
 			props += b"\x1A"+CustomUTF8.encode(properties['ResponseInformation'])
+                        properties.pop('ResponseInformation')
+
 		if 'ServerReference' in properties.keys():
 			props += b"\x1C"+CustomUTF8.encode(properties['ServerReference'])
+                        properties.pop('ServerReference')
 		if 'AuthenticationMethod' in properties.keys():
 			props += b"\x15"+CustomUTF8.encode(properties['AuthenticationMethod'])
+                        properties.pop('AuthenticationMethod')
+
 		if 'AuthenticationData' in properties.keys():
 			props += b"\x16"+BinaryData.fromBytesToBinary(properties['AuthenticationData'])
+                        properties.pop('AuthenticationData')
 	
 		propertyLength = VariableByte.encode(len(props))
 		#1 pentru flags si 1 pentru rc
