@@ -4,6 +4,7 @@ from aux import MQTTError
 from ConnackPacket import ConnackPacket
 from config import Config
 from session import Session
+from Watchdog import Watchdog
 import socket
 import threading
 import logging
@@ -16,17 +17,6 @@ load_dotenv()
 logging.basicConfig(filename='../logs/server.log', level=logging.DEBUG)
 
 
-class Watchdog:
-    def __init__(self, threads: list):
-        self.threads = threads
-
-    def purgeThreadBySocket(self, sock):
-        for connection in self.threads:
-            if connection.csocket == sock:
-                sock.close()
-                connection.join()
-                self.threads.remove(connection)
-
 
 class ClientThread(threading.Thread):
     def __init__(self, clientAddress, clientsocket, shared, *args, **kwargs):
@@ -38,9 +28,14 @@ class ClientThread(threading.Thread):
         logging.info("New connection added: {}".format(clientAddress))
 
 
-    def broadcast(self, msg):
+    def broadcast(self, msg:bytes) -> None:
         for connection in self.shared['watchdog'].threads:
             if connection.csocket != self.csocket:
+                connection.csocket.send(msg)
+
+    def broadcastByTopic(self, msg:bytes, topic:str) -> None:
+        for connection in self.shared['watchdog'].threads:
+            if topic in connection.sess.topics:
                 connection.csocket.send(msg)
 
 
@@ -53,19 +48,24 @@ class ClientThread(threading.Thread):
                 r, _, _ = select.select([self.csocket], [], [], 1)
                 if r:
                     data = self.csocket.recv(self.shared['config'].config['MaxPacketSize'])
-                    self.sess.registerNewData(data)
-                    try:
-                        packet = self.sess.classifyData()
-                        response = self.sess.handleConnection(packet)
-                        self.csocket.send(response.data)
-                        print("I just sent him everything I could") 
-                    except MQTTError:
-                        msg='bye'
+                    if data:
+                        self.sess.registerNewData(data)
+                        try:
+                            packet = self.sess.classifyData()
+                            response = self.sess.handleConnection(packet)
+                            self.csocket.send(response.data)
+                            print("I just sent him everything I could") 
+                        except MQTTError:
+                            msg='bye'
 
-                    if msg=='bye':
-                        logging.warning("Client at {} disconnected...".format(self.clientAddress))
-                        self.csocket.close()
+                        if msg=='bye':
+                            logging.warning("Client at {} disconnected...".format(self.clientAddress))
+                            self.csocket.close()
                         break
+                    else:
+                        if self.session['will']
+                        #handle last will
+
                 else:
                     self.csocket.close()
                     break

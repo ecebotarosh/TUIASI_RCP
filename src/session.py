@@ -6,6 +6,8 @@ from ConnectPacket import ConnectPacket
 from ConnackPacket import ConnackPacket
 from aux import MQTTError
 from config import Config
+from authenticator import Authenticator
+from Watchdog import Watchdog
 
 class Session:
     def __init__(self):
@@ -14,6 +16,7 @@ class Session:
         self.will = ""
         self.config = Config()
         self.config.reload()
+        self.auth = Authenticator(self.config)
 
     def reset(self):
         self.data=b""
@@ -21,6 +24,7 @@ class Session:
         self.will = ""
         self.config = Config()
         self.config.reload()
+        self.auth = Authenticator(self.config)
 
     def registerNewData(self, data: bytes):
         self.data = data
@@ -73,11 +77,12 @@ class Session:
             print(packet.payload)
             if packet.variable['cleanStart']:
                 self.reset()
-            #if not self.config['AllowPublicAccess']:
-            #    if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
-            #       if authen
-            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 30}))
-
+            if not self.config['AllowPublicAccess']:
+                if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
+                    if self.auth.authenticate(packet.payload['username'], packet.payload['password']):
+                        return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))
+                    else:
+                        return ConnackPacket(ConnackPacket.generatePacketData(False, 0x04, {'SessionExpiryInterval': 0}))
 
 if __name__ == "__main__":
     byte_data = b"\x10\x0f\x15\x30"
