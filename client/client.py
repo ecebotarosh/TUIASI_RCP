@@ -40,7 +40,7 @@ async def main(broker_host):
     client.on_disconnect = on_disconnect
     client.on_subscribe = on_subscribe
 
-    #client.set_auth_credentials(token, None)
+    client.set_auth_credentials('admin', 'admin')
     await client.connect(broker_host, 8080, keepalive=60, version=MQTTv50)
 
     #client.publish('TEST/TIME', str(time.time()), qos=1)
