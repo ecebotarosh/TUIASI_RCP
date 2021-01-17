@@ -85,9 +85,9 @@ class SubscribePacket(MQTTPacket):
         payloadHeader = self.data[offset:]
 
         self.payload['subscriptions'] = []
+        subscriptionList = []
         while(len(payloadHeader) != 0):
             offset, topic = readCustomUTF8String(payloadHeader)
-            subscriptionList = [topic]
             payloadHeader = payloadHeader[offset:]
             # subscribeOptions
             subscriptionOptions = struct.unpack("!B", payloadHeader[:1])[0]
@@ -98,10 +98,15 @@ class SubscribePacket(MQTTPacket):
             RAP = subscriptionOptions & 8
             NL = subscriptionOptions & 4
             QoS = subscriptionOptions & 3
-            subscriptionList.append({'retainHandling': retainHandling, 'RAP': RAP, 'NL': NL, 'QoS': QoS})
+            subscriptionList.append({topic:{'retainHandling': retainHandling, 'RAP': RAP, 'NL': NL, 'QoS': QoS}})
             self.payload['subscriptions'].append(subscriptionList)
             payloadHeader = payloadHeader[1:]
             #self.payload['subscriptions'] este o lista de liste de 2 elemente : str si dict
+
+        def parse(self) -> None:
+            self.parseFixedHeader()
+            self.parseVariableHeader()
+            self.parsePayloadHeader()
 
 
 if __name__ == "__main__":
