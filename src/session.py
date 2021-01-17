@@ -10,18 +10,23 @@ from authenticator import Authenticator
 from Watchdog import Watchdog
 
 class Session:
-    def __init__(self):
+    def __init__(self, watchdog, sock):
         self.data = b""
         self.topics = []
         self.will = ""
+        self.clientID = ""
         self.config = Config()
         self.config.reload()
         self.auth = Authenticator(self.config)
+        self.watchdog = watchdog
+        self.socket = sock
 
     def reset(self):
         self.data=b""
         self.topics = []
         self.will = ""
+        self.clientID = ""
+        self.username = ""
         self.config = Config()
         self.config.reload()
         self.auth = Authenticator(self.config)
@@ -69,9 +74,7 @@ class Session:
 
     def handleConnection(self, packet: MQTTPacket) -> MQTTPacket:
         if isinstance(packet, ConnectPacket):
-            packet.parseFixedHeader()
-            packet.parseVariableHeader()
-            packet.parsePayloadHeader()
+            packet.parse()
             print(packet.fixed)
             print(packet.variable)
             print(packet.payload)
@@ -80,9 +83,35 @@ class Session:
             if not self.config['AllowPublicAccess']:
                 if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
                     if self.auth.authenticate(packet.payload['username'], packet.payload['password']):
+                        self.clientID = packet.payload['clientID']
                         return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))
                     else:
                         return ConnackPacket(ConnackPacket.generatePacketData(False, 0x04, {'SessionExpiryInterval': 0}))
+            else:
+                if self.watchdog.isUsedClientID(packet.payload['clientID']):
+                    return ConnackPacket(ConnackPacket.generatePacketData(False, 0x03, {'SessionExpiryInterval':0}))
+        elif isinstance(packet, PublishPacket):
+            packet.parse()
+            subscribers = self.watchdog.getSubscriberSockets(packet.variable['topicName'], self.sock)
+            self.watchdog.broadcastByTopic(packet, self.sock)
+
+            if packet.fixed['QoS']==1:
+                if subscribers==[]:
+                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x10, [])
+                else:
+                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x00, [])
+            elif packet.fixed['QoS']==2:
+                if subscribers==[]:
+                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x10, "No subscribers", {})
+                else:
+                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x00, "SUCCESS", {}
+            else:
+                return packet
+        
+            
+                
+                
+                
 
 if __name__ == "__main__":
     byte_data = b"\x10\x0f\x15\x30"

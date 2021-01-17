@@ -24,7 +24,7 @@ class ClientThread(threading.Thread):
         self.csocket = clientsocket
         self.clientAddress = clientAddress
         self.shared = shared
-        self.sess = Session()
+        self.sess = Session(self.shared['watchdog'])
         logging.info("New connection added: {}".format(clientAddress))
 
 
