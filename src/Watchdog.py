@@ -11,23 +11,33 @@ class Watchdog:
                 sock.close()
                 connection.join()
                 self.threads.remove(connection)
+                return
     
+    def forceDisconnectByClientId(self, clientId : str) -> None:
+        for connection in self.threads:
+            if connection.sess.clientID == clientId:
+                connection.csocket.close()
+                connection.join()
+                self.threads.remove(connection)
+                return
+
+
     def getUsedClientIDs(self, sock) -> list:
         logins = []
         for connection in self.threads:
-            if connection.session.clientID not in logins and connection.csocket != sock:
-                logins.append(connection.session.clientID)
+            if connection.sess.clientID not in logins and connection.csocket != sock:
+                logins.append(connection.sess.clientID)
         return logins
 
     def getSubscriberSockets(self, sub_topic:str, sock) -> list:
         subscribers = []
         for connection in self.threads:
-            if sub_topic in connection.session.topics and connection.csocket!=sock:
+            if sub_topic in connection.sess.topics and connection.csocket!=sock:
                 subscribers.append(connection.csocket)
         return subscribers
 
 
-    def isUsedClientID(self, clientID:str, sock) -> bool
+    def isUsedClientID(self, clientID:str, sock) -> bool:
         clientIDs = self.getUsedClientIDs(sock)
         return clientID in clientIDs
 

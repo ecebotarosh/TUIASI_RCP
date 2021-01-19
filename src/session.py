@@ -80,7 +80,7 @@ class Session:
             print(packet.payload)
             if packet.variable['cleanStart']:
                 self.reset()
-            if not self.config['AllowPublicAccess']:
+            if not self.config.config['AllowPublicAccess']:
                 if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
                     if self.auth.authenticate(packet.payload['username'], packet.payload['password']):
                         self.clientID = packet.payload['clientID']
@@ -88,26 +88,29 @@ class Session:
                     else:
                         return ConnackPacket(ConnackPacket.generatePacketData(False, 0x04, {'SessionExpiryInterval': 0}))
             else:
-                if self.watchdog.isUsedClientID(packet.payload['clientID']):
+                if self.watchdog.isUsedClientID(packet.payload['clientID'], self.socket):
                     return ConnackPacket(ConnackPacket.generatePacketData(False, 0x03, {'SessionExpiryInterval':0}))
+            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))    
+
         elif isinstance(packet, PublishPacket):
             packet.parse()
             subscribers = self.watchdog.getSubscriberSockets(packet.variable['topicName'], self.sock)
-            self.watchdog.broadcastByTopic(packet, self.sock)
+            self.watchdog.broadcastByTopic(packet, packet.variable['topicName'], self.sock)
 
             if packet.fixed['QoS']==1:
                 if subscribers==[]:
-                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x10, [])
+                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x10, []))
                 else:
-                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x00, [])
+                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x00, []))
             elif packet.fixed['QoS']==2:
                 if subscribers==[]:
-                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x10, "No subscribers", {})
+                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x10, "No subscribers", {}))
                 else:
-                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x00, "SUCCESS", {}
+                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x00, "SUCCESS", {}))
             else:
                 return packet
-        
+        elif isinstance(packet, PubrecPacket):
+            return
             
                 
                 

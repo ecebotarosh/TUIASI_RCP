@@ -18,13 +18,14 @@ logging.basicConfig(filename='../logs/server.log', level=logging.DEBUG)
 
 
 
+
 class ClientThread(threading.Thread):
     def __init__(self, clientAddress, clientsocket, shared, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
         self.csocket = clientsocket
         self.clientAddress = clientAddress
         self.shared = shared
-        self.sess = Session(self.shared['watchdog'])
+        self.sess = Session(self.shared['watchdog'], self.csocket)
         logging.info("New connection added: {}".format(clientAddress))
 
 
@@ -63,7 +64,8 @@ class ClientThread(threading.Thread):
                             self.csocket.close()
                         break
                     else:
-                        if self.session['will']
+                        if self.session['will']:
+                            return
                         #handle last will
 
                 else:
@@ -75,6 +77,20 @@ class ClientThread(threading.Thread):
                 break
         
         
+def enterCLIMode(watchdog):
+    while True:
+        command = input("(CLI-MODE)> ")
+        if command.strip()=="list-connections":
+            for conn in watchdog.threads:
+                print(conn)
+        elif len(command.strip().split())==2:
+            if command.strip().split()[0]=="kick":
+                for conn in watchdog.threads:
+                    watchdog.forceDisconnectByClientId(command.strip().split()[-1])
+        elif command.strip()=="exit":
+            break
+    return
+
 
 IP = os.getenv("IP")
 PORT = int(os.getenv("PORT"))
