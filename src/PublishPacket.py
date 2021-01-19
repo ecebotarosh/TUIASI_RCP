@@ -24,6 +24,7 @@ class PublishPacket(MQTTPacket):
 		self.fixed['remainingLength']=VariableByte.decode(self.fixed['remainingLength'])
 		self.fixed_size=1+required
 
+
 	def parseVariableHeader(self)->None:
 		variableHeader=self.data[self.fixed_size:]
 		offset,self.variable['topicName']=readCustomUTF8String(variableHeader)

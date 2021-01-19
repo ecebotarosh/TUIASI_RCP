@@ -53,9 +53,9 @@ class ClientThread(threading.Thread):
                         self.sess.registerNewData(data)
                         try:
                             packet = self.sess.classifyData()
+                            print(packet)
                             response = self.sess.handleConnection(packet)
                             self.csocket.send(response.data)
-                            print("I just sent him everything I could") 
                         except MQTTError:
                             msg='bye'
 
@@ -64,15 +64,16 @@ class ClientThread(threading.Thread):
                             self.csocket.close()
                         break
                     else:
-                        if self.session['will']:
-                            return
+                        if self.sess.will:
+                            print("HERE THE CLIENT HAS DISCONNECTED AND HERE ARE THE LAST WILL PARAMETERS")
+                            print(self.sess.will)
+                            self.csocket.close()
+                            break
                         #handle last will
 
                 else:
                     self.csocket.close()
                     break
-                print ("from client", msg)
-                self.csocket.send(response.data)
             else:
                 break
         

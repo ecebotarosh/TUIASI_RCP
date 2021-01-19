@@ -24,7 +24,7 @@ class Session:
     def reset(self):
         self.data=b""
         self.topics = []
-        self.will = ""
+        self.willProperties = {}
         self.clientID = ""
         self.username = ""
         self.config = Config()
@@ -36,6 +36,8 @@ class Session:
 
     def classifyData(self) -> MQTTPacket:
         ptype = self.data[0] // 16
+        print(f"GOT ANOTHER PACKET  WITH PTYPE : {ptype}")
+        print(self.data)
         if ptype == 1:
             print("Returning ConnectPacket")
             return ConnectPacket(self.data)
@@ -73,45 +75,57 @@ class Session:
             
 
     def handleConnection(self, packet: MQTTPacket) -> MQTTPacket:
-        if isinstance(packet, ConnectPacket):
-            packet.parse()
-            print(packet.fixed)
-            print(packet.variable)
-            print(packet.payload)
-            if packet.variable['cleanStart']:
-                self.reset()
-            if not self.config.config['AllowPublicAccess']:
-                if packet.fixed['usernameFlag'] and packet.fixed['passwordFlag']:
-                    if self.auth.authenticate(packet.payload['username'], packet.payload['password']):
-                        self.clientID = packet.payload['clientID']
-                        return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))
+        packet.parse()
+        nextPacket = packet.data[packet.fixed['remainingLength']+3:]
+        #citeste gresit pachetul         
+        print(nextPacket)
+        while len(nextPacket):
+            if isinstance(packet, ConnectPacket):
+                print(packet.fixed)
+                print(packet.variable)
+                print(packet.payload)
+                if packet.variable['cleanStart']:
+                    self.reset()
+                if packet.variable['willFlag']:
+                    self.will = packet.payload['willProperties']
+                if not self.config.config['AllowPublicAccess']:
+                    if packet.variable['usernameFlag'] and packet.variable['passwordFlag']:
+                        if self.auth.authenticate(packet.payload['username'], packet.payload['password']):
+                            self.clientID = packet.payload['clientID']
+                            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))
+                        else:
+                            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x04, {'SessionExpiryInterval': 0}))
+                else:
+                    if self.watchdog.isUsedClientID(packet.payload['clientID'], self.socket):
+                        return ConnackPacket(ConnackPacket.generatePacketData(False, 0x03, {'SessionExpiryInterval':0}))
+                return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))    
+
+            elif isinstance(packet, PublishPacket):
+                packet.parse()
+                subscribers = self.watchdog.getSubscriberSockets(packet.variable['topicName'], self.sock)
+                self.watchdog.broadcastByTopic(packet, packet.variable['topicName'], self.sock)
+                packet.parse()
+                print(packet.fixed)
+                print(packet.variable)
+                print(packet.payload)
+
+                if packet.fixed['QoS']==1:
+                    if subscribers==[]:
+                        return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x10, []))
                     else:
-                        return ConnackPacket(ConnackPacket.generatePacketData(False, 0x04, {'SessionExpiryInterval': 0}))
-            else:
-                if self.watchdog.isUsedClientID(packet.payload['clientID'], self.socket):
-                    return ConnackPacket(ConnackPacket.generatePacketData(False, 0x03, {'SessionExpiryInterval':0}))
-            return ConnackPacket(ConnackPacket.generatePacketData(False, 0x00, {'SessionExpiryInterval': 0}))    
-
-        elif isinstance(packet, PublishPacket):
-            packet.parse()
-            subscribers = self.watchdog.getSubscriberSockets(packet.variable['topicName'], self.sock)
-            self.watchdog.broadcastByTopic(packet, packet.variable['topicName'], self.sock)
-
-            if packet.fixed['QoS']==1:
-                if subscribers==[]:
-                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x10, []))
+                        return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x00, []))
+                elif packet.fixed['QoS']==2:
+                    if subscribers==[]:
+                        return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x10, "No subscribers", {}))
+                    else:
+                        return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x00, "SUCCESS", {}))
                 else:
-                    return PubackPacket(PubackPacket.generatePacketData(packet.variable['packetIdentifier'], 0x00, []))
-            elif packet.fixed['QoS']==2:
-                if subscribers==[]:
-                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x10, "No subscribers", {}))
-                else:
-                    return PubrecPacket(PubrecPacket.generatePacketData(packet.variable['packet_id'], 0x00, "SUCCESS", {}))
-            else:
-                return packet
-        elif isinstance(packet, PubrecPacket):
-            return
-            
+                    return packet
+            elif isinstance(packet, PubrecPacket):
+                return
+            self.registerNewData(nextPacket)
+            print("REGISTERED NEW DATA")
+            packet = self.classifyData()
                 
                 
                 

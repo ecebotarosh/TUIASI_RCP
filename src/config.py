@@ -17,6 +17,12 @@ class Config:
     def __repr__(self):
         return str(self.config)
 
+    def getKnownTopics(self) -> list:
+        with open(self.config['KnownTopicsPath']) as f:
+            lines = f.readlines()
+        return list(map(lambda x : x.strip(), lines))
+
+
     @staticmethod
     def parseConfString(conf_string : str, value:str) -> object:
         if conf_string == "AllowPublicAccess":
