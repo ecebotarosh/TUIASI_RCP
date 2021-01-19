@@ -13,7 +13,7 @@ class Session:
     def __init__(self, watchdog, sock):
         self.data = b""
         self.topics = []
-        self.will = ""
+        self.will = {}
         self.clientID = ""
         self.config = Config()
         self.config.reload()
@@ -24,7 +24,7 @@ class Session:
     def reset(self):
         self.data=b""
         self.topics = []
-        self.willProperties = {}
+        self.will = {}
         self.clientID = ""
         self.username = ""
         self.config = Config()
